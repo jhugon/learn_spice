@@ -96,12 +96,12 @@ class TemplateModifier(object):
     for f in self.tmpFiles:
         f.close()
 
-def analyzeAC(circuitTemplate,outFileName,inNodePlus,inNodeMinus,outNodes,mag,fstart,fstop,pointsPerDecade=5):
+def analyzeAC(circuitTemplate,outFileName,inNodePlus,inNodeMinus,outNodes,mag,fstart,fstop,pointsPerDecade=5,debug=False):
   template = TemplateModifier(circuitTemplate)
   template.addACSource("vac",inNodePlus,inNodeMinus,mag)
   template.addACAnalysis(outNodes,pointsPerDecade,fstart,fstop)
   circuitFileName = template.getFile()
-  if True:
+  if debug:
     with open(circuitFileName) as circuitFile:
         print(circuitFile.read())
   call_args = ["ngspice","-b",circuitFileName]
@@ -116,12 +116,12 @@ def analyzeAC(circuitTemplate,outFileName,inNodePlus,inNodeMinus,outNodes,mag,fs
     print(output.read())
     print(stderr.read())
     
-  if True:
+  if debug:
     output.seek(0)
     print(output.read())
   output.seek(0)
   xdata,ydata, xtitle, ytitle = getData(output,len(outNodes))
-  if True:
+  if debug:
     print(xdata)
     for iCol in range(len(outNodes)):
         print(ydata[iCol])
