@@ -7,38 +7,44 @@ import subprocess
 import numpy
 import matplotlib.pyplot as mpl
 
-def getData(logfile):
+def getData(logfile,nYCols):
   xtitle = None
-  ytitle = None
+  ytitles = []
   xdata = []
   ydata = []
+  for iCol in range(nYCols):
+    ydata.append([])
   foundStart1 = False
   foundStart2 = False
   foundStart3 = False
   for line in logfile:
     if foundStart3:
-      datamatch = re.match(r"^(\d+)\s+([0-9eE.+-]+)\s+([0-9eE.+-]+)\s*$",line)
+      reStr = r"^(\d+)\s+([0-9eE.+-]+)"+("\s+([0-9eE.+-]+)")*nYCols+"\s*$"
+      datamatch = re.match(reStr,line)
       if datamatch:
         x = datamatch.group(2)
-        y = datamatch.group(3)
         x = float(x)
-        y = float(y)
         xdata.append(x)
-        ydata.append(y)
+        for iCol in range(nYCols):
+          y = datamatch.group(3+iCol)
+          y = float(y)
+          ydata[iCol].append(y)
     elif foundStart2:
       if re.match(r"^-+\s*$",line):
           foundStart3 = True
     elif foundStart1:
-      start2match = re.match(r"^Index\s+(\w+)\s+([a-zA-Z0-9\(\)]+)\s*$",line)
+      reStr = r"^Index\s+(\w+)"+nYCols*("\s+([a-zA-Z0-9\(\)]+)")+"\s*$"
+      start2match = re.match(reStr,line)
       if start2match:
         xtitle = start2match.group(1)
-        ytitle = start2match.group(2)
+        for iCol in range(nYCols):
+          ytitles.append(start2match.group(2+iCol))
         foundStart2 = True
     elif re.match(r"^-+\s*$",line):
       foundStart1 = True
   xdata = numpy.array(xdata)
   ydata = numpy.array(ydata)
-  return xdata, ydata, xtitle, ytitle
+  return xdata, ydata, xtitle, ytitles
 
 def plotData(filename):
   xdata,ydata, xtitle,ytitle = getData(filename)
@@ -60,10 +66,15 @@ class TemplateModifier(object):
     line = "{0} {1:d} {2:d} AC {3} {4}".format(name,nodePlus,nodeMinus,mag,phase)
     self.sourceLines.append(line)
 
-  def addACAnalysis(self,nodePlus,nodeMinus,pointsPerDecade,fstart,fstop):
+  def addACAnalysis(self,nodesToPrint,pointsPerDecade,fstart,fstop):
     line = ".ac dec {0:d} {1} {2}".format(pointsPerDecade,fstart,fstop)
     self.sourceLines.append(line)
-    line = ".print ac vm({0:d},{1:d})".format(nodePlus,nodeMinus)
+    line = ".print ac"
+    for node in nodesToPrint:
+      if type(node) == list:
+        line += " vm({0:d},{1:d})".format(node[0],node[1])
+      else:
+        line += " vm({0:d})".format(node)
     self.sourceLines.append(line)
 
   def getFile(self):
@@ -85,10 +96,10 @@ class TemplateModifier(object):
     for f in self.tmpFiles:
         f.close()
 
-def analyzeAC(circuitTemplate,outFileName,inNodePlus,inNodeMinus,outNodePlus,outNodeMinus,mag,fstart,fstop,pointsPerDecade=5):
+def analyzeAC(circuitTemplate,outFileName,inNodePlus,inNodeMinus,outNodes,mag,fstart,fstop,pointsPerDecade=5):
   template = TemplateModifier(circuitTemplate)
   template.addACSource("vac",inNodePlus,inNodeMinus,mag)
-  template.addACAnalysis(outNodePlus,outNodeMinus,pointsPerDecade,fstart,fstop)
+  template.addACAnalysis(outNodes,pointsPerDecade,fstart,fstop)
   circuitFileName = template.getFile()
   if True:
     with open(circuitFileName) as circuitFile:
@@ -109,12 +120,24 @@ def analyzeAC(circuitTemplate,outFileName,inNodePlus,inNodeMinus,outNodePlus,out
     output.seek(0)
     print(output.read())
   output.seek(0)
-  xdata,ydata, xtitle, ytitle = getData(output)
+  xdata,ydata, xtitle, ytitle = getData(output,len(outNodes))
+  if True:
+    print(xdata)
+    for iCol in range(len(outNodes)):
+        print(ydata[iCol])
   ydataDB = 20*numpy.log(ydata/mag)
   fig, ax = mpl.subplots()
-  ax.plot(xdata,ydataDB)
+  for iCol in range(len(outNodes)):
+    outNode = outNodes[iCol]
+    label = None
+    if type(outNode) == list:
+      label = "Node {} to {}".format(outNode[0],outNode[1])
+    else:
+      label = "Node {} to 0".format(outNode)
+    ax.semilogx(xdata,ydataDB[iCol],label=label)
   ax.set_xlabel(xtitle)
-  ax.set_ylabel("V$_{{{},{}}}$ [dBc]".format(outNodePlus,outNodeMinus))
+  ax.set_ylabel("V [dBc]")
+  ax.legend()
   fig.savefig(outFileName)
   
-analyzeAC("example.cir.template","test.png",1,0,2,0,100,.01,10)
+analyzeAC("example.cir.template","test.png",1,0,[2,3],100,.01,10)
