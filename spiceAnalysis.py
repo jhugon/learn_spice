@@ -4,13 +4,14 @@ import re
 import os
 import tempfile
 import subprocess
+import io
 import numpy
 import matplotlib.pyplot as mpl
 
 class TemplateModifier(object):
 
-  def __init__(self,circuitTemplateFilename):
-    self.templateFilename = circuitTemplateFilename
+  def __init__(self,circuitTemplateFile):
+    self.templateFile = circuitTemplateFile
     self.sourceLines = []
     self.optionLines = [".options noacct"]
     self.analyzerLines = []
@@ -49,10 +50,16 @@ class TemplateModifier(object):
 
   def getFile(self):
     result = tempfile.NamedTemporaryFile(mode="w+")
-    with open(self.templateFilename) as infile:
-        for line in infile:
-          if line[:4] != ".end":
-            result.write(line)
+    if isinstance(self.templateFile,io.IOBase):
+      self.templateFile.seek(0)
+      for line in self.templateFile:
+        if line[:4] != ".end":
+          result.write(line)
+    else:
+      with open(self.templateFile) as infile:
+          for line in infile:
+            if line[:4] != ".end":
+              result.write(line)
     for line in self.sourceLines:
       result.write(line + "\n")
     for line in self.optionLines:
@@ -70,8 +77,8 @@ class TemplateModifier(object):
 
 class SpiceAnalyzer(object):
 
-  def __init__(self,circuitTemplateFilename):
-    self.circuitTemplateFilename = circuitTemplateFilename
+  def __init__(self,circuitTemplateFile):
+    self.circuitTemplateFile = circuitTemplateFile
 
   def getData(self,logfile):
     xtitle = None
@@ -143,7 +150,7 @@ class SpiceAnalyzer(object):
     ydatas = []
     ytitles = []
     for outProbe in outProbes:
-      template = TemplateModifier(self.circuitTemplateFilename)
+      template = TemplateModifier(self.circuitTemplateFile)
       template.addACSource("vac",inNodePlus,inNodeMinus,mag)
       template.addACAnalysis(outProbe,pointsPerDecade,fstart,fstop)
       circuitFileName = template.getFile()
@@ -177,7 +184,7 @@ class SpiceAnalyzer(object):
     ydatas = []
     ytitles = []
     for outProbe in outProbes:
-      template = TemplateModifier(self.circuitTemplateFilename)
+      template = TemplateModifier(self.circuitTemplateFile)
       template.addTransSource("vtran",inNodePlus,inNodeMinus,sourceStr)
       template.addTransAnalysis(outProbe,tstep,tstart,tstop)
       circuitFileName = template.getFile()
@@ -210,7 +217,7 @@ class SpiceAnalyzer(object):
     ydatas = []
     ytitles = []
     for sourceStr in sourceStrs:
-      template = TemplateModifier(self.circuitTemplateFilename)
+      template = TemplateModifier(self.circuitTemplateFile)
       template.addTransSource("vtran",inNodePlus,inNodeMinus,sourceStr)
       template.addTransAnalysis(outProbe,tstep,tstart,tstop)
       circuitFileName = template.getFile()
@@ -240,3 +247,7 @@ if __name__ == "__main__":
             "PULSE(0,1,0.1,0,0,3.0,100.)",
         ]
         ,0.01,0,5.)
+
+  with open("example.cir.template") as infile:
+    sa = SpiceAnalyzer(infile)
+    sa.analyzeAC("test4.png",1,0,["vm(2)","vm(3)","vm(4)"],100,.01,10)
