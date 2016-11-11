@@ -1,0 +1,4 @@
+high_pass
+C1 1 2 10n
+R1 2 0 1K
+.end

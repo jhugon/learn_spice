@@ -145,8 +145,8 @@ class SpiceAnalyzer(object):
     """
     outProbes is a list of things like 'v(2)', 'vm(3,0)'
     """
-    xdata = None
     xtitle = None
+    xdatas = []
     ydatas = []
     ytitles = []
     for outProbe in outProbes:
@@ -155,15 +155,14 @@ class SpiceAnalyzer(object):
       template.addACAnalysis(outProbe,pointsPerDecade,fstart,fstop)
       circuitFileName = template.getFile()
       xdata,ydata, xtitle, ytitle = self.runSpice(circuitFileName,debug)
+      xdatas.append(xdata)
       ydatas.append(ydata)
       ytitles.append(ytitle)
-    ydatas = tuple(ydatas)
-    ydata = numpy.stack(tuple(ydatas))
-    ydataDB = 20*numpy.log(ydata/mag)
+    ydataDBs = [20*numpy.log(ydata/mag) for ydata in ydatas]
     fig, ax = mpl.subplots()
     for iCol in range(len(outProbes)):
       label = outProbes[iCol]
-      ax.semilogx(xdata,ydataDB[iCol],label=label)
+      ax.semilogx(xdatas[iCol],ydataDBs[iCol],label=label)
     ax.set_xlabel(xtitle)
     ax.set_ylabel("V [dBc]")
     ax.legend()
@@ -179,8 +178,8 @@ class SpiceAnalyzer(object):
     tstart is the recording start time
     tstop is the recording stop time
     """
-    xdata = None
     xtitle = None
+    xdatas = []
     ydatas = []
     ytitles = []
     for outProbe in outProbes:
@@ -189,14 +188,13 @@ class SpiceAnalyzer(object):
       template.addTransAnalysis(outProbe,tstep,tstart,tstop)
       circuitFileName = template.getFile()
       xdata,ydata, xtitle, ytitle = self.runSpice(circuitFileName,debug)
+      xdatas.append(xdata)
       ydatas.append(ydata)
       ytitles.append(ytitle)
-    ydatas = tuple(ydatas)
-    ydata = numpy.stack(tuple(ydatas))
     fig, ax = mpl.subplots()
     for iCol in range(len(outProbes)):
       label = outProbes[iCol]
-      ax.plot(xdata,ydata[iCol],label=label)
+      ax.plot(xdatas[iCol],ydatas[iCol],label=label)
     ax.set_xlabel(xtitle)
     ax.set_ylabel("V")
     ax.legend()
@@ -212,8 +210,8 @@ class SpiceAnalyzer(object):
     tstart is the recording start time
     tstop is the recording stop time
     """
-    xdata = None
     xtitle = None
+    xdatas = []
     ydatas = []
     ytitles = []
     for sourceStr in sourceStrs:
@@ -222,14 +220,13 @@ class SpiceAnalyzer(object):
       template.addTransAnalysis(outProbe,tstep,tstart,tstop)
       circuitFileName = template.getFile()
       xdata,ydata, xtitle, ytitle = self.runSpice(circuitFileName,debug)
+      xdatas.append(xdata)
       ydatas.append(ydata)
       ytitles.append(ytitle)
-    ydatas = tuple(ydatas)
-    ydata = numpy.stack(tuple(ydatas))
     fig, ax = mpl.subplots()
     for iCol in range(len(sourceStrs)):
       label = sourceStrs[iCol]
-      ax.plot(xdata,ydata[iCol],label=label)
+      ax.plot(xdatas[iCol],ydatas[iCol],label=label)
     ax.set_xlabel(xtitle)
     ax.set_ylabel(outProbe)
     ax.legend()
@@ -245,9 +242,20 @@ if __name__ == "__main__":
             "PULSE(0,1,0.1,0,0,0.3,100.)",
             "PULSE(0,1,0.1,0,0,1.0,100.)",
             "PULSE(0,1,0.1,0,0,3.0,100.)",
-        ]
-        ,0.01,0,5.)
+        ],
+        0.01,0,5.)
 
   with open("example.cir.template") as infile:
     sa = SpiceAnalyzer(infile)
     sa.analyzeAC("test4.png",1,0,["vm(2)","vm(3)","vm(4)"],100,.01,10)
+
+  high = SpiceAnalyzer("high_pass.cir.template")
+  high.analyzeAC("testHigh.png",1,0,["vm(2)"],1,"1k","1000k")
+  high.analyzeManyTrans("testHigh2.png",1,0,"vm(2)",
+        [
+            #"PULSE(0,1,10u,0,0,1u,100u)",
+            #"PULSE(0,1,10u,0,0,10u,100u)",
+            "PULSE(0,1,10u,0,0,30u,100u)",
+            "PULSE(0,1,10u,0,0,200u,100u)",
+        ],
+        "0.25u",0,"100u",debug=False)
