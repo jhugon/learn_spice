@@ -53,12 +53,12 @@ class TemplateModifier(object):
     if isinstance(self.templateFile,io.IOBase):
       self.templateFile.seek(0)
       for line in self.templateFile:
-        if line[:4] != ".end":
+        if line[:4] != ".end" or line[:5] == ".ends":
           result.write(line)
     else:
       with open(self.templateFile) as infile:
           for line in infile:
-            if line[:4] != ".end":
+            if line[:4] != ".end" or line[:5] == ".ends":
               result.write(line)
     for line in self.sourceLines:
       result.write(line + "\n")
