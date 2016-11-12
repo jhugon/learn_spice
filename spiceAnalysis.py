@@ -164,7 +164,7 @@ class SpiceAnalyzer(object):
     for iCol in range(len(outProbes)):
       label = outProbes[iCol]
       ax.semilogx(xdatas[iCol],ydataDBs[iCol],label=label)
-    ax.set_xlabel(xtitle)
+    ax.set_xlabel("Frequency [Hz]")
     ax.set_ylabel("V [dBc]")
     ax.legend()
     fig.savefig(outFileName)
