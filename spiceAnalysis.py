@@ -49,7 +49,7 @@ class TemplateModifier(object):
     self.tmpFiles.clear()
 
   def getFile(self):
-    result = tempfile.NamedTemporaryFile(mode="w+")
+    result = tempfile.NamedTemporaryFile(mode="w+",suffix=".cir",delete=True)
     if isinstance(self.templateFile,io.IOBase):
       self.templateFile.seek(0)
       for line in self.templateFile:
@@ -118,6 +118,7 @@ class SpiceAnalyzer(object):
 
   def runSpice(self,circuitFileName,debug=False):
     if debug:
+      print("runSpice: circuitFileName: '{}'".format(circuitFileName))
       with open(circuitFileName) as circuitFile:
           print(circuitFile.read())
     call_args = ["ngspice","-b",circuitFileName]
