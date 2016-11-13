@@ -3,12 +3,48 @@
 import tempfile
 from spiceAnalysis import SpiceAnalyzer
 
-active_no_filter = """active_no_filter
-*
+library = """*
 * 1 input+, 2 input-, 3 output, 4 ground
 .subckt opamp 1 2 3 4
 E1 3 4 1 2 1e8
 .ends
+*
+* all filters below are input, output, grnd
+*
+.subckt lowpass 1 3 0
+r1 1 2 1
+x1 0 2 3 0 opamp
+c1 2 3 3e-5
+r2 2 3 1
+.ends
+*
+.subckt highpass 1 4 0
+r1 1 2 1
+c1 2 3 1e-4
+x1 0 3 4 0 opamp
+r2 3 4 1
+.ends
+*
+.subckt lowpass4 1 4 0
+x1 1 2 0 lowpass
+x2 2 3 0 lowpass
+x3 3 4 0 lowpass
+.ends
+*
+.subckt crrcfltr 1 3 0
+x1 1 2 0 highpass
+x2 2 3 0 lowpass
+.ends
+*
+.subckt semigaussian 1 3 0
+x1 1 2 0 highpass
+x2 2 3 0 lowpass4
+.ends
+*
+"""
+
+active_no_filter = """active_no_filter
+*""" + library + """*
 *
 r1 1 2 1K
 x1 0 2 3 0 opamp
@@ -18,79 +54,39 @@ r2 2 3 1K
 
 
 active_high_pass = """active_high_pass
+*""" + library + """*
 *
-* 1 input+, 2 input-, 3 output, 4 ground
-.subckt opamp 1 2 3 4
-E1 3 4 1 2 1e8
-.ends
-*
-r1 1 2 1K
-c1 2 3 10n
-x1 0 3 4 0 opamp
-r2 3 4 1K
+x1 1 2 0 highpass
 .end
 """
 
 active_low_pass = """active_low_pass
+*""" + library + """*
 *
-* 1 input+, 2 input-, 3 output, 4 ground
-.subckt opamp 1 2 3 4
-E1 3 4 1 2 1e8
-.ends
-*
-r1 1 2 1K
-x1 0 2 3 0 opamp
-c1 2 3 10n
-r2 2 3 1K
+x1 1 2 0 lowpass4
 .end
 """
 
-active_band_pass = """active_band_pass
+active_crrc_filter = """active_crrc_filter
+*""" + library + """*
 *
-* 1 input+, 2 input-, 3 output, 4 ground
-.subckt opamp 1 2 3 4
-E1 3 4 1 2 1e8
-.ends
-*
-* first high pass
-r1 1 2 1K
-c1 2 3 10n
-x1 0 3 4 0 opamp
-r2 3 4 2K
-* now low pass
-r3 4 5 1K
-x2 0 5 6 0 opamp
-c2 5 6 10n
-r4 5 6 1K
+x1 1 2 0 crrcfltr
 .end
 """
 
-active_band_pass2 = """active_band_pass2
+active_semigaussian = """active_semigaussian
+*""" + library + """*
 *
-* 1 input+, 2 input-, 3 output, 4 ground
-.subckt opamp 1 2 3 4
-E1 3 4 1 2 1e8
-.ends
-*
-* first low pass
-r1 1 2 1K
-x1 0 2 3 0 opamp
-c1 2 3 10n
-r2 2 3 1K
-*
-r3 3 4 1K
-c2 4 5 100n
-x2 0 5 6 0 opamp
-r4 5 6 2K
+x1 1 2 0 semigaussian
 .end
 """
 
 runs = [
 (active_no_filter,"Active_No_Filter",["vm(3)"]),
-(active_high_pass,"Active_High_Pass",["vm(4)"]),
-(active_low_pass,"Active_Low_Pass",["vm(3)"]),
-(active_band_pass,"Active_band_Pass",["vm(6)"]),
-(active_band_pass2,"Active_band_Pass2",["vm(6)"]),
+(active_high_pass,"Active_High_Pass",["vm(2)"]),
+(active_low_pass,"Active_Low_Pass",["vm(2)"]),
+(active_crrc_filter,"Active_CRRC_Filter",["vm(2)"]),
+(active_semigaussian,"Active_Semigaussian_Filter",["vm(2)"]),
 ]
 
 for circuit, savename, probes in runs:
@@ -99,13 +95,10 @@ for circuit, savename, probes in runs:
     circuitFile.flush()
     circuitFile.seek(0)
     sa = SpiceAnalyzer(circuitFile)
-    sa.analyzeAC(savename+".png",1,0,probes,1,"1k","1000k",debug=False)
-    sa.analyzeManyTrans(savename+"_trans.png",1,0,"vm(3)",
+    sa.analyzeAC(savename+".png",1,0,probes,1,"1","10000k",debug=False)
+    sa.analyzeManyTrans(savename+"_trans.png",1,0,probes[0],
           [
-              "PULSE(0,1,10u,1u,0,2000u,10000u)",
-              "PULSE(0,1,10u,100u,0,2000u,10000u)",
-              "PULSE(0,1,10u,500u,0,2000u,10000u)",
-              "PULSE(0,1,500u,1u,0,200u,10000u)",
-              "PULSE(0,1,500u,0,0,10u,10000u)",
+              "PULSE(0,1,100u,0,0,2000u,10000u)",
+              "PULSE(0,1,100u,0,0,100u,10000u)",
           ],
           "1u",0,"1000u",debug=False)
