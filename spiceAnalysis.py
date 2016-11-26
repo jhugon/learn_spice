@@ -169,7 +169,7 @@ class SpiceAnalyzer(object):
     ax.legend()
     fig.savefig(outFileName)
 
-  def analyzeTrans(self,outFileName,inNodePlus,inNodeMinus,outProbes,sourceStr,tstep,tstart,tstop,debug=False):
+  def analyzeTrans(self,outFileName,inNodePlus,inNodeMinus,outProbes,sourceStr,tstep,tstart,tstop,current=False,debug=False):
     """
     Transient Analysis
     outProbes is a list of things like 'v(2)', 'vm(3,0)'
@@ -178,6 +178,7 @@ class SpiceAnalyzer(object):
     tstep is the recording step time
     tstart is the recording start time
     tstop is the recording stop time
+    current: if true is a current source, else a voltage source
     """
     xtitle = None
     xdatas = []
@@ -185,7 +186,10 @@ class SpiceAnalyzer(object):
     ytitles = []
     for outProbe in outProbes:
       template = TemplateModifier(self.circuitTemplateFile)
-      template.addTransSource("vtran",inNodePlus,inNodeMinus,sourceStr)
+      if current:
+        template.addTransSource("itran",inNodePlus,inNodeMinus,sourceStr)
+      else:
+        template.addTransSource("vtran",inNodePlus,inNodeMinus,sourceStr)
       template.addTransAnalysis(outProbe,tstep,tstart,tstop)
       circuitFileName = template.getFile()
       xdata,ydata, xtitle, ytitle = self.runSpice(circuitFileName,debug)
@@ -201,7 +205,7 @@ class SpiceAnalyzer(object):
     ax.legend()
     fig.savefig(outFileName)
 
-  def analyzeManyTrans(self,outFileName,inNodePlus,inNodeMinus,outProbe,sourceStrs,tstep,tstart,tstop,debug=False):
+  def analyzeManyTrans(self,outFileName,inNodePlus,inNodeMinus,outProbe,sourceStrs,tstep,tstart,tstop,current=False,debug=False):
     """
     Transient Analysis
     outProbe is a str like 'v(2)', 'vm(3,0)'
@@ -210,6 +214,7 @@ class SpiceAnalyzer(object):
     tstep is the recording step time
     tstart is the recording start time
     tstop is the recording stop time
+    current: if true is a current source, else a voltage source
     """
     xtitle = None
     xdatas = []
@@ -217,7 +222,10 @@ class SpiceAnalyzer(object):
     ytitles = []
     for sourceStr in sourceStrs:
       template = TemplateModifier(self.circuitTemplateFile)
-      template.addTransSource("vtran",inNodePlus,inNodeMinus,sourceStr)
+      if current:
+        template.addTransSource("itran",inNodePlus,inNodeMinus,sourceStr)
+      else:
+        template.addTransSource("vtran",inNodePlus,inNodeMinus,sourceStr)
       template.addTransAnalysis(outProbe,tstep,tstart,tstop)
       circuitFileName = template.getFile()
       xdata,ydata, xtitle, ytitle = self.runSpice(circuitFileName,debug)
