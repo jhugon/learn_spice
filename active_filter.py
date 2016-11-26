@@ -25,6 +25,14 @@ x1 0 3 4 0 opamp
 r2 3 4 1
 .ends
 *
+.subckt sklowpass2 1 4 0
+r1 1 2 1
+r2 2 3 1
+c1 2 4 1e-4
+c2 3 0 1e-4
+x1 3 4 4 0 opamp
+.ends
+*
 .subckt lowpass4 1 4 0
 x1 1 2 0 lowpass
 x2 2 3 0 lowpass
@@ -71,6 +79,13 @@ x1 1 2 0 lowpass4
 .end
 """
 
+active_sk_low_pass2 = """active_sk_low_pass2
+*""" + library + """*
+*
+x1 1 2 0 sklowpass2
+.end
+"""
+
 active_crrc_filter = """active_crrc_filter
 *""" + library + """*
 *
@@ -89,6 +104,7 @@ runs = [
 (active_no_filter,"Active_No_Filter",["vm(3)"]),
 (active_high_pass,"Active_High_Pass",["vm(2)"]),
 (active_low_pass,"Active_Low_Pass",["vm(2)"]),
+(active_sk_low_pass2,"Active_Sallen_Key_Low_Pass_2",["vm(2)"]),
 (active_crrc_filter,"Active_CRRC_Filter",["vm(2)"]),
 (active_semigaussian,"Active_Semigaussian_Filter",["vm(2)"]),
 ]

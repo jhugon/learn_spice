@@ -11,26 +11,14 @@ E1 3 4 1 2 1e8
 *
 * all filters below are input, output, grnd
 *
-.subckt lowpass 1 3 0
-r1 1 2 1
-x1 0 2 3 0 opamp
-c1 2 3 1n
+.subckt sklowpass2 1 4 0
+r1 1 2 500
 r2 2 3 500
+c1 2 4 1n
+c2 3 0 1n
+x1 3 4 4 0 opamp
 .ends
 *
-.subckt highpass 1 4 0
-r1 1 2 1
-c1 2 3 1n
-x1 0 3 4 0 opamp
-r2 3 4 1K
-.ends
-*
-.subckt lowpass4 1 5 0
-x1 1 2 0 lowpass
-x2 2 3 0 lowpass
-x3 3 4 0 lowpass
-x4 4 5 0 lowpass
-.ends
 """
 
 charge_amp = """charge_amp
@@ -42,12 +30,14 @@ cf 1 2 1p
 xin 0 1 2 0 opamp
 co 2 3 1n
 ro 2 3 1K
-xshape 3 4 0 lowpass4
+xbuf1 3 4 4 0 opamp
+xshape1 4 5 0 sklowpass2
+xshape2 5 6 0 sklowpass2
 .end
 """
 
 runs = [
-(charge_amp,"Charge Amplifier",["vm(4)"]),
+(charge_amp,"Charge Amplifier",["vm(6)"]),
 ]
 
 for circuit, savename, probes in runs:
@@ -56,14 +46,14 @@ for circuit, savename, probes in runs:
     circuitFile.flush()
     circuitFile.seek(0)
     sa = SpiceAnalyzer(circuitFile)
-    sa.analyzeManyTrans(savename+"_trans.png",1,0,probes[0],
+    sa.analyzeManyTrans(savename+"_singletrans.png",1,0,probes[0],
           [
               "PULSE(0,1p,10n,0,0,20n,10000u)",
               "PULSE(0,2p,10n,0,0,20n,10000u)",
               "PULSE(0,3p,10n,0,0,20n,10000u)",
           ],
           "1000p",0,"10u",current=True,debug=False)
-    sa.analyzeManyTrans(savename+"_trans.png",1,0,probes[0],
+    sa.analyzeManyTrans(savename+"_manytrans.png",1,0,probes[0],
           [
               "PULSE(0,1p,10n,0,0,20n,1u)",
               "PULSE(0,1p,10n,0,0,20n,2u)",
