@@ -14,35 +14,24 @@ E1 3 4 1 2 1e8
 .subckt lowpass 1 3 0
 r1 1 2 1
 x1 0 2 3 0 opamp
-c1 2 3 3e-5
-r2 2 3 1
+c1 2 3 1n
+r2 2 3 500
 .ends
 *
 .subckt highpass 1 4 0
 r1 1 2 1
-c1 2 3 1e-4
+c1 2 3 1n
 x1 0 3 4 0 opamp
-r2 3 4 1
+r2 3 4 1K
 .ends
 *
-.subckt lowpass4 1 4 0
+.subckt lowpass4 1 5 0
 x1 1 2 0 lowpass
 x2 2 3 0 lowpass
 x3 3 4 0 lowpass
+x4 4 5 0 lowpass
 .ends
-*
-.subckt crrcfltr 1 3 0
-x1 1 2 0 highpass
-x2 2 3 0 lowpass
-.ends
-*
-.subckt semigaussian 1 3 0
-x1 1 2 0 highpass
-x2 2 3 0 lowpass4
-.ends
-*
 """
-
 
 charge_amp = """charge_amp
 *""" + library + """*
@@ -53,11 +42,12 @@ cf 1 2 1p
 xin 0 1 2 0 opamp
 co 2 3 1n
 ro 2 3 1K
+xshape 3 4 0 lowpass4
 .end
 """
 
 runs = [
-(charge_amp,"Charge Amplifier",["vm(3)"]),
+(charge_amp,"Charge Amplifier",["vm(4)"]),
 ]
 
 for circuit, savename, probes in runs:
@@ -71,5 +61,13 @@ for circuit, savename, probes in runs:
               "PULSE(0,1p,10n,0,0,20n,10000u)",
               "PULSE(0,2p,10n,0,0,20n,10000u)",
               "PULSE(0,3p,10n,0,0,20n,10000u)",
+          ],
+          "1000p",0,"10u",current=True,debug=False)
+    sa.analyzeManyTrans(savename+"_trans.png",1,0,probes[0],
+          [
+              "PULSE(0,1p,10n,0,0,20n,1u)",
+              "PULSE(0,1p,10n,0,0,20n,2u)",
+              "PULSE(0,1p,10n,0,0,20n,3u)",
+              "PULSE(0,1p,10n,0,0,20n,4u)",
           ],
           "1000p",0,"10u",current=True,debug=False)

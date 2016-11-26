@@ -29,6 +29,10 @@ r2 3 4 1
 x1 1 2 0 lowpass
 x2 2 3 0 lowpass
 x3 3 4 0 lowpass
+*x4 4 5 0 lowpass
+*x5 5 6 0 lowpass
+*x6 6 7 0 lowpass
+*x7 7 8 0 lowpass
 .ends
 *
 .subckt crrcfltr 1 3 0
@@ -98,7 +102,11 @@ for circuit, savename, probes in runs:
     sa.analyzeAC(savename+".png",1,0,probes,1,"1","10000k",debug=False)
     sa.analyzeManyTrans(savename+"_trans.png",1,0,probes[0],
           [
-              "PULSE(0,1,100u,0,0,2000u,10000u)",
-              "PULSE(0,1,100u,0,0,100u,10000u)",
+              #"PULSE(0,1,100u,0,0,2000u,10000u)",
+              #"PULSE(0,1,100u,0,0,100u,10000u)",
+              #"PULSE(0,1,100u,0,0,10u,10000u)",
+              "PULSE(0,1,100u,0,0,1u,10000u)",
+              "PULSE(0,1,100u,0,0,100n,10000u)",
+              "PULSE(0,1,100u,0,0,10n,10000u)",
           ],
           "1u",0,"1000u",debug=False)
