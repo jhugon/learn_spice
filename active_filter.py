@@ -12,24 +12,24 @@ E1 3 4 1 2 1e8
 * all filters below are input, output, grnd
 *
 .subckt lowpass 1 3 0
-r1 1 2 1
+r1 1 2 10K
 x1 0 2 3 0 opamp
-c1 2 3 3e-5
-r2 2 3 1
+c1 2 3 10n
+r2 2 3 10K
 .ends
 *
 .subckt highpass 1 4 0
-r1 1 2 1
-c1 2 3 1e-4
+r1 1 2 10K
+c1 2 3 10n
 x1 0 3 4 0 opamp
-r2 3 4 1
+r2 3 4 10K
 .ends
 *
 .subckt sklowpass2 1 4 0
-r1 1 2 1
-r2 2 3 1
-c1 2 4 1e-4
-c2 3 0 1e-4
+r1 1 2 10K
+r2 2 3 10K
+c1 2 4 10n
+c2 3 0 10n
 x1 3 4 4 0 opamp
 .ends
 *

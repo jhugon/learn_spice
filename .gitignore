@@ -1,4 +1,6 @@
 *.png
 *.pdf
+*.odp
 log*
 __pycache__
+LM324.5_1
