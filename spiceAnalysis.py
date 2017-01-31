@@ -144,35 +144,57 @@ class SpiceAnalyzer(object):
 
   def analyzeAC(self,outFileName,inNodePlus,inNodeMinus,outProbes,mag,fstart,fstop,pointsPerDecade=5,debug=False):
     """
-    outProbes is a list of things like 'v(2)', 'vm(3,0)'
+    outProbes is a list of things like '2' or '3,0' that can be put inside v() or vm().
     """
     xtitle = None
     xdatas = []
     ydatas = []
     ytitles = []
+    fig, axs = mpl.subplots(2)
+    ax1 = axs[0]
+    ax2 = axs[1]
     for outProbe in outProbes:
+      outMagProbe = "vm({})".format(outProbe)
       template = TemplateModifier(self.circuitTemplateFile)
       template.addACSource("vac",inNodePlus,inNodeMinus,mag)
-      template.addACAnalysis(outProbe,pointsPerDecade,fstart,fstop)
+      template.addACAnalysis(outMagProbe,pointsPerDecade,fstart,fstop)
       circuitFileName = template.getFile()
       xdata,ydata, xtitle, ytitle = self.runSpice(circuitFileName,debug)
       xdatas.append(xdata)
       ydatas.append(ydata)
       ytitles.append(ytitle)
     ydataDBs = [20*numpy.log(ydata/mag) for ydata in ydatas]
-    fig, ax = mpl.subplots()
     for iCol in range(len(outProbes)):
       label = outProbes[iCol]
-      ax.semilogx(xdatas[iCol],ydataDBs[iCol],label=label)
-    ax.set_xlabel("Frequency [Hz]")
-    ax.set_ylabel("V [dBc]")
-    ax.legend()
+      ax1.semilogx(xdatas[iCol],ydataDBs[iCol],label=label)
+    #ax1.set_xlabel("Frequency [Hz]")
+    ax1.set_ylabel("V [dBc]")
+    ax1.legend()
+    xdatas = []
+    ydatas = []
+    ytitles = []
+    for outProbe in outProbes:
+      outPhaseProbe = "vp({})".format(outProbe)
+      template = TemplateModifier(self.circuitTemplateFile)
+      template.addACSource("vac",inNodePlus,inNodeMinus,mag)
+      template.addACAnalysis(outPhaseProbe,pointsPerDecade,fstart,fstop)
+      circuitFileName = template.getFile()
+      xdata,ydata, xtitle, ytitle = self.runSpice(circuitFileName,debug)
+      xdatas.append(xdata)
+      ydatas.append(ydata)
+      ytitles.append(ytitle)
+    ydataDegs = [ydata*180/numpy.pi for ydata in ydatas]
+    for iCol in range(len(outProbes)):
+      label = outProbes[iCol]
+      ax2.semilogx(xdatas[iCol],ydataDegs[iCol],label=label)
+    ax2.set_xlabel("Frequency [Hz]")
+    ax2.set_ylabel("Phase [deg]")
     fig.savefig(outFileName)
 
   def analyzeTrans(self,outFileName,inNodePlus,inNodeMinus,outProbes,sourceStr,tstep,tstart,tstop,current=False,debug=False):
     """
     Transient Analysis
-    outProbes is a list of things like 'v(2)', 'vm(3,0)'
+    outProbes is a list of things like '2' or '3,0' that can be put inside v() or vm().
     sourceStr is a str like PULSE(0,1,100ns,0,0,100ns,1s)
         where the pulse args are initial val, pulsed val, delay, rise time, fall time, pulse width, period.
     tstep is the recording step time
@@ -185,12 +207,13 @@ class SpiceAnalyzer(object):
     ydatas = []
     ytitles = []
     for outProbe in outProbes:
+      outMagProbe = "vm({})".format(outProbe)
       template = TemplateModifier(self.circuitTemplateFile)
       if current:
         template.addTransSource("itran",inNodePlus,inNodeMinus,sourceStr)
       else:
         template.addTransSource("vtran",inNodePlus,inNodeMinus,sourceStr)
-      template.addTransAnalysis(outProbe,tstep,tstart,tstop)
+      template.addTransAnalysis(outMagProbe,tstep,tstart,tstop)
       circuitFileName = template.getFile()
       xdata,ydata, xtitle, ytitle = self.runSpice(circuitFileName,debug)
       xdatas.append(xdata)
@@ -208,7 +231,7 @@ class SpiceAnalyzer(object):
   def analyzeManyTrans(self,outFileName,inNodePlus,inNodeMinus,outProbe,sourceStrs,tstep,tstart,tstop,current=False,debug=False):
     """
     Transient Analysis
-    outProbe is a str like 'v(2)', 'vm(3,0)'
+    outProbes is a list of things like '2' or '3,0' that can be put inside v() or vm().
     sourceStrs is a list of strs like PULSE(0,1,100ns,0,0,100ns,1s)
         where the pulse args are initial val, pulsed val, delay, rise time, fall time, pulse width, period.
     tstep is the recording step time
@@ -221,12 +244,13 @@ class SpiceAnalyzer(object):
     ydatas = []
     ytitles = []
     for sourceStr in sourceStrs:
+      outMagProbe = "vm({})".format(outProbe)
       template = TemplateModifier(self.circuitTemplateFile)
       if current:
         template.addTransSource("itran",inNodePlus,inNodeMinus,sourceStr)
       else:
         template.addTransSource("vtran",inNodePlus,inNodeMinus,sourceStr)
-      template.addTransAnalysis(outProbe,tstep,tstart,tstop)
+      template.addTransAnalysis(outMagProbe,tstep,tstart,tstop)
       circuitFileName = template.getFile()
       xdata,ydata, xtitle, ytitle = self.runSpice(circuitFileName,debug)
       xdatas.append(xdata)
@@ -243,9 +267,9 @@ class SpiceAnalyzer(object):
 
 if __name__ == "__main__":
   sa = SpiceAnalyzer("example.cir.template")
-  sa.analyzeAC("test.png",1,0,["vm(2)","vm(3)","vm(4)"],100,.01,10)
-  sa.analyzeTrans("test2.png",1,0,["vm(2)","vm(3)","vm(4)"],"PULSE(0,1,0.1,0,0,0.1,100.)",0.01,0,3.)
-  sa.analyzeManyTrans("test3.png",1,0,"vm(2)",
+  sa.analyzeAC("test.png",1,0,["2","3","4"],100,.01,10)
+  sa.analyzeTrans("test2.png",1,0,["2","3","4"],"PULSE(0,1,0.1,0,0,0.1,100.)",0.01,0,3.)
+  sa.analyzeManyTrans("test3.png",1,0,"2",
         [
             "PULSE(0,1,0.1,0,0,0.1,100.)",
             "PULSE(0,1,0.1,0,0,0.3,100.)",
@@ -256,11 +280,11 @@ if __name__ == "__main__":
 
   with open("example.cir.template") as infile:
     sa = SpiceAnalyzer(infile)
-    sa.analyzeAC("test4.png",1,0,["vm(2)","vm(3)","vm(4)"],100,.01,10)
+    sa.analyzeAC("test4.png",1,0,["2","3","4"],100,.01,10)
 
   high = SpiceAnalyzer("high_pass.cir.template")
-  high.analyzeAC("testHigh.png",1,0,["vm(2)"],1,"1k","1000k")
-  high.analyzeManyTrans("testHigh2.png",1,0,"vm(2)",
+  high.analyzeAC("testHigh.png",1,0,["2"],1,"1k","1000k")
+  high.analyzeManyTrans("testHigh2.png",1,0,"2",
         [
             #"PULSE(0,1,10u,0,0,1u,100u)",
             #"PULSE(0,1,10u,0,0,10u,100u)",

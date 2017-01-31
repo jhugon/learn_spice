@@ -101,12 +101,12 @@ x1 1 2 0 semigaussian
 """
 
 runs = [
-(active_no_filter,"Active_No_Filter",["vm(3)"]),
-(active_high_pass,"Active_High_Pass",["vm(2)"]),
-(active_low_pass,"Active_Low_Pass",["vm(2)"]),
-(active_sk_low_pass2,"Active_Sallen_Key_Low_Pass_2",["vm(2)"]),
-(active_crrc_filter,"Active_CRRC_Filter",["vm(2)"]),
-(active_semigaussian,"Active_Semigaussian_Filter",["vm(2)"]),
+(active_no_filter,"Active_No_Filter",["3"]),
+(active_high_pass,"Active_High_Pass",["2"]),
+(active_low_pass,"Active_Low_Pass",["2"]),
+(active_sk_low_pass2,"Active_Sallen_Key_Low_Pass_2",["2"]),
+(active_crrc_filter,"Active_CRRC_Filter",["2"]),
+(active_semigaussian,"Active_Semigaussian_Filter",["2"]),
 ]
 
 for circuit, savename, probes in runs:

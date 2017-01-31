@@ -16,8 +16,8 @@ with tempfile.TemporaryFile(mode="w+") as circuitFile:
   circuitFile.flush()
   circuitFile.seek(0)
   sa = SpiceAnalyzer(circuitFile)
-  sa.analyzeAC("HighLow.png",1,0,["vm(3)"],1,"1k","1000k",debug=False)
-  sa.analyzeManyTrans("HighLow2.png",1,0,"vm(3)",
+  sa.analyzeAC("HighLow.png",1,0,["3"],1,"1k","1000k",debug=False)
+  sa.analyzeManyTrans("HighLow2.png",1,0,"3",
         [
             "PULSE(0,1,10u,0,0,1u,100u)",
             "PULSE(0,1,10u,0,0,10u,100u)",

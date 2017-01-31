@@ -37,7 +37,7 @@ xshape2 5 6 0 sklowpass2
 """
 
 runs = [
-(charge_amp,"Charge Amplifier",["vm(6)"]),
+(charge_amp,"Charge Amplifier",["6"]),
 ]
 
 for circuit, savename, probes in runs:
