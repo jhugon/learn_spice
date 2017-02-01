@@ -207,7 +207,7 @@ class SpiceAnalyzer(object):
     ydatas = []
     ytitles = []
     for outProbe in outProbes:
-      outMagProbe = "vm({})".format(outProbe)
+      outMagProbe = "v({})".format(outProbe)
       template = TemplateModifier(self.circuitTemplateFile)
       if current:
         template.addTransSource("itran",inNodePlus,inNodeMinus,sourceStr)
@@ -244,7 +244,7 @@ class SpiceAnalyzer(object):
     ydatas = []
     ytitles = []
     for sourceStr in sourceStrs:
-      outMagProbe = "vm({})".format(outProbe)
+      outMagProbe = "v({})".format(outProbe)
       template = TemplateModifier(self.circuitTemplateFile)
       if current:
         template.addTransSource("itran",inNodePlus,inNodeMinus,sourceStr)
