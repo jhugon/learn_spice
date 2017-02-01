@@ -168,12 +168,12 @@ for circuit, savename, probes in runs:
     circuitFile.flush()
     circuitFile.seek(0)
     sa = SpiceAnalyzer(circuitFile)
-    sa.analyzeAC(savename+".png",1,0,probes,1,"1","10000k",debug=False)
+    sa.analyzeAC(savename+".png",1,0,probes,1,"100","100Meg",debug=False)
     sa.analyzeManyTrans(savename+"_trans.png",1,0,probes[0],
           [
             
               # pulse args are initial val, pulsed val, delay, rise time, fall time, pulse width, period.
-              "PULSE(0,0.1,100u,0,0,2000u,10000u)",
+              "PULSE(0,1,10u,0,0,2000u,10000u)",
               # "SIN(0,1,500,0,0)", # offset, amp, freq, delay, damping
           ],
-          "10u",0,"1000u",debug=False)
+          "1u",0,"100u",debug=False)

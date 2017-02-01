@@ -147,8 +147,8 @@ class SpiceAnalyzer(object):
     outProbes is a list of things like '2' or '3,0' that can be put inside v() or vm().
     """
     xtitle = None
-    xdatas = []
-    ydatas = []
+    freqGains = []
+    magnitudes = []
     ytitles = []
     fig, axs = mpl.subplots(2)
     ax1 = axs[0]
@@ -159,19 +159,13 @@ class SpiceAnalyzer(object):
       template.addACSource("vac",inNodePlus,inNodeMinus,mag)
       template.addACAnalysis(outMagProbe,pointsPerDecade,fstart,fstop)
       circuitFileName = template.getFile()
-      xdata,ydata, xtitle, ytitle = self.runSpice(circuitFileName,debug)
-      xdatas.append(xdata)
-      ydatas.append(ydata)
+      freqGain,magnitude, xtitle, ytitle = self.runSpice(circuitFileName,debug)
+      freqGains.append(freqGain)
+      magnitudes.append(magnitude)
       ytitles.append(ytitle)
-    ydataDBs = [20*numpy.log10(ydata/mag) for ydata in ydatas]
-    for iCol in range(len(outProbes)):
-      label = outProbes[iCol]
-      ax1.semilogx(xdatas[iCol],ydataDBs[iCol],label=label)
-    #ax1.set_xlabel("Frequency [Hz]")
-    ax1.set_ylabel("V [dBc]")
-    ax1.legend()
-    xdatas = []
-    ydatas = []
+    magnitudeDBs = [20*numpy.log10(ydata/mag) for ydata in magnitudes]
+    freqPhases = []
+    phases = []
     ytitles = []
     for outProbe in outProbes:
       outPhaseProbe = "vp({})".format(outProbe)
@@ -180,16 +174,68 @@ class SpiceAnalyzer(object):
       template.addACAnalysis(outPhaseProbe,pointsPerDecade,fstart,fstop)
       circuitFileName = template.getFile()
       xdata,ydata, xtitle, ytitle = self.runSpice(circuitFileName,debug)
-      xdatas.append(xdata)
-      ydatas.append(ydata)
+      freqPhases.append(xdata)
+      phases.append(ydata)
       ytitles.append(ytitle)
-    ydataDegs = [ydata*180/numpy.pi for ydata in ydatas]
+    phaseDegs = [ydata*180/numpy.pi for ydata in phases]
     for iCol in range(len(outProbes)):
-      label = outProbes[iCol]
-      ax2.semilogx(xdatas[iCol],ydataDegs[iCol],label=label)
+      gainMargin, phaseMargin = self.getGainPhaseMargin(freqGains[iCol],magnitudeDBs[iCol],freqPhases[iCol],phaseDegs[iCol])
+      label = "Point {}".format(outProbes[iCol])
+      if not (gainMargin is None):
+        label += ", GM: {:.0f} dB".format(gainMargin)
+      if not (phaseMargin is None):
+        label += r", PM: {:.0f}$^\circ$".format(phaseMargin)
+      ax1.semilogx(freqGains[iCol],magnitudeDBs[iCol],label=label)
+    #ax1.set_xlabel("Frequency [Hz]")
+    ax1.set_ylabel("V [dBc]")
+    for iCol in range(len(outProbes)):
+      ax2.semilogx(freqPhases[iCol],phaseDegs[iCol],label=label)
     ax2.set_xlabel("Frequency [Hz]")
-    ax2.set_ylabel("Phase [deg]")
+    ax2.set_ylabel(r"Phase [$^\circ$]")
+    ax1.legend(loc="best")
     fig.savefig(outFileName)
+
+  def getGainPhaseMargin(self,freqGain,magnitudeDB,freqPhase,phaseDeg):
+    gainMargin = None
+    phaseMargin = None
+    unityFreq = self.findUnityGainFreq(freqGain,magnitudeDB)
+    zeroPhaseFreq = self.findZeroPhaseFreq(freqPhase,phaseDeg)
+    if unityFreq:
+      phaseMargin = numpy.interp(unityFreq,freqPhase,phaseDeg)
+    if zeroPhaseFreq:
+      gainMargin = -numpy.interp(zeroPhaseFreq,freqGain,magnitudeDB)
+    return gainMargin, phaseMargin
+
+  def findUnityGainFreq(self,freqs,vDBc):
+    """
+    Finds the lowest frequency where the gain < 0 dBc.
+    Returns None if it is the first freqency in the list.
+    """
+    isBelowUnityGain = vDBc < 0
+    result = None
+    if not isBelowUnityGain[0]:
+        freqsBelowUnityGain = freqs[isBelowUnityGain]
+        if len(freqsBelowUnityGain) > 0:
+            result = freqs[isBelowUnityGain][0]
+    return result
+
+  def findZeroPhaseFreq(self,freqs,phaseDeg):
+    """
+    Finds the lowest frequency where the phase changes sign.
+    Returns None if one is not found
+    """
+    signIsPos = phaseDeg > 0
+    posFreqs = freqs[signIsPos]
+    negFreqs = freqs[numpy.logical_not(signIsPos)]
+    firstSignIsPos = signIsPos[0]
+    result = None
+    if firstSignIsPos:
+      if len(negFreqs) > 0:
+        result = negFreqs[0]
+    else:
+      if len(posFreqs) > 0:
+        result = posFreqs[0]
+    return result
 
   def analyzeTrans(self,outFileName,inNodePlus,inNodeMinus,outProbes,sourceStr,tstep,tstart,tstop,current=False,debug=False):
     """
@@ -225,7 +271,7 @@ class SpiceAnalyzer(object):
       ax.plot(xdatas[iCol],ydatas[iCol],label=label)
     ax.set_xlabel(xtitle)
     ax.set_ylabel("V")
-    ax.legend()
+    ax.legend(loc="best")
     fig.savefig(outFileName)
 
   def analyzeManyTrans(self,outFileName,inNodePlus,inNodeMinus,outProbe,sourceStrs,tstep,tstart,tstop,current=False,debug=False):
@@ -262,7 +308,7 @@ class SpiceAnalyzer(object):
       ax.plot(xdatas[iCol],ydatas[iCol],label=label)
     ax.set_xlabel(xtitle)
     ax.set_ylabel(outProbe)
-    ax.legend()
+    ax.legend(loc="best")
     fig.savefig(outFileName)
 
 if __name__ == "__main__":
