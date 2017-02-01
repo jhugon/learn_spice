@@ -9,6 +9,7 @@ library = ""
 with open("LM324.5_1") as lm324file:
   lm324str = lm324file.read()
   library += lm324str[:-1]
+  # 1.2MHz bandwidth quad op-amp single/dual supply PDIP
   #* (REV N/A)      SUPPLY VOLTAGE: 5V
   #* CONNECTIONS:   NON-INVERTING INPUT
   #*                | INVERTING INPUT
@@ -18,17 +19,78 @@ with open("LM324.5_1") as lm324file:
   #*                | | | | |
   #.SUBCKT LM324    1 2 3 4 5
 
+with open("LM318.301") as chipfile:
+  chipstr = chipfile.read()
+  library += chipstr[:-1]
+  # 15 MHz bandwidth high slew rate Double PDIP
+  #* (REV N/A)      SUPPLY VOLTAGE: +/-15V
+  #* CONNECTIONS:   NON-INVERTING INPUT
+  #*                | INVERTING INPUT
+  #*                | | POSITIVE POWER SUPPLY
+  #*                | | | NEGATIVE POWER SUPPLY
+  #*                | | | | OUTPUT
+  #*                | | | | |
+  #.SUBCKT LM318    1 2 3 4 5
+
+with open("AD8651.cir") as chipfile:
+  chipstr = chipfile.read()
+  library += chipstr
+  # 50 MHz precision low-noise amp, smd
+  #*			noninverting input
+  #*			|	inverting input
+  #*			|	|	 positive supply
+  #*			|	|	 |	 negative supply
+  #*			|	|	 |	 |	 output
+  #*			|	|	 |	 |	 |
+  #*			|	|	 |	 |	 |
+  #.SUBCKT AD8651		1	2	99	50	45
+
+with open("ada4627.cir") as chipfile:
+  chipstr = chipfile.read()
+  library += chipstr
+  # 19 MHz SMD JFET input 
+  #*                 non-inverting input
+  #*                 |   inverting input
+  #*                 |   |    positive supply
+  #*                 |   |    |    negative supply
+  #*                 |   |    |    |    output
+  #*                 |   |    |    |    |
+  #.SUBCKT ADA4627   1   2   99   50   30
+
+with open("ada4637.cir") as chipfile:
+  chipstr = chipfile.read()
+  library += chipstr
+  # 79 MHz SMD JFET input 
+  #*            	  non-inverting input
+  #*                 |   inverting input
+  #*                 |   |    positive supply
+  #*                 |   |    |    negative supply
+  #*                 |   |    |    |    output
+  #*                 |   |    |    |    |
+  #.SUBCKT ADA4637   1   2   99   50   30
+
+##enable this if you want to use the JFET chips
+#library += """*
+#    .OPTIONS GMIN=0.01p
+#    .OPTIONS ABSTOL=0.01pA
+#    .OPTIONS ITL1=500
+#    .OPTIONS ITL2=200
+#    .OPTIONS ITL4=100
+#"""
+
 library += """
 
 *
-* 1 input+, 2 input-, 3 +V supply, 4 -V supply, 5 output
 * 1 input+, 2 input-, 3 output, 4 +V supply, 5 -V supply, 6 ground
 .subckt opamp 1 2 3 4 5 6
 *E1 3 6 1 2 1e8
-x1 1 2 4 5 3 LM324
+*x1 1 2 4 5 3 LM324
+x1 1 2 4 5 3 LM318
+*x1 1 2 4 5 3 AD8651
+*x1 1 2 4 5 3 ADA4627
+*x1 1 2 4 5 3 ADA4637
 .ends
 *
-* all filters below are input, output, grnd, +supply
 * all filters below are input, output, +supply, -supply, ground
 *
 .subckt lowpass 1 3 10 11 0
@@ -53,11 +115,11 @@ c2 3 0 1n
 x1 3 4 4 10 11 0 opamp
 .ends
 *
-.subckt lowpass4 1 4 10 11 0
+.subckt lowpass4 1 5 10 11 0
 x1 1 2 10 11 0 lowpass
 x2 2 3 10 11 0 lowpass
 x3 3 4 10 11 0 lowpass
-*x4 4 5 10 11 0 lowpass
+x4 4 5 10 11 0 lowpass
 *x5 5 6 10 11 0 lowpass
 *x6 6 7 10 11 0 lowpass
 *x7 7 8 10 11 0 lowpass
@@ -124,6 +186,15 @@ x1 1 2 99 100 0 lowpass
 .end
 """
 
+active_low_pass4 = """active_low_pass4
+*""" + library + """*
+*
+v99 99 0 DC 5
+v100 100 0 DC -5
+x1 1 2 99 100 0 lowpass4
+.end
+"""
+
 active_sk_low_pass2 = """active_sk_low_pass2
 *""" + library + """*
 *
@@ -157,6 +228,7 @@ runs = [
 (active_100gain,"Bread_100gain",["3"]),
 (active_high_pass,"Bread_High_Pass",["2"]),
 (active_low_pass,"Bread_Low_Pass",["2"]),
+(active_low_pass4,"Bread_Low_Pass4",["2"]),
 (active_sk_low_pass2,"Bread_Sallen_Key_Low_Pass_2",["2"]),
 (active_crrc_filter,"Bread_CRRC_Filter",["2"]),
 (active_semigaussian,"Bread_Semigaussian_Filter",["2"]),
