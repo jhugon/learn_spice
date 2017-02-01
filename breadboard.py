@@ -24,32 +24,32 @@ library += """
 * 1 input+, 2 input-, 3 +V supply, 4 -V supply, 5 output
 * 1 input+, 2 input-, 3 output, 4 +V supply, 5 -V supply, 6 ground
 .subckt opamp 1 2 3 4 5 6
-E1 3 6 1 2 1e8
-*x1 1 2 4 5 3 LM324
+*E1 3 6 1 2 1e8
+x1 1 2 4 5 3 LM324
 .ends
 *
 * all filters below are input, output, grnd, +supply
 * all filters below are input, output, +supply, -supply, ground
 *
 .subckt lowpass 1 3 10 11 0
-r1 1 2 10K
+r1 1 2 1.58K
 x1 0 2 3 10 11 0 opamp
-c1 2 3 10n
-r2 2 3 10K
+c1 2 3 1n
+r2 2 3 1.58K
 .ends
 *
 .subckt highpass 1 4 10 11 0
-r1 1 2 10K
-c1 2 3 10n
+r1 1 2 1.58K
+c1 2 3 1n
 x1 0 3 4 10 11 0 opamp
-r2 3 4 10K
+r2 3 4 1.58K
 .ends
 *
 .subckt sklowpass2 1 4 10 11 0
-r1 1 2 10K
-r2 2 3 10K
-c1 2 4 10n
-c2 3 0 10n
+r1 1 2 1.58K
+r2 2 3 1.58K
+c1 2 4 1n
+c2 3 0 1n
 x1 3 4 4 10 11 0 opamp
 .ends
 *
@@ -81,6 +81,17 @@ active_emitter_follower = """active_emitter_follower
 v99 99 0 DC 5
 v100 100 0 DC -5
 x1 1 3 3 99 100 0 opamp
+.end
+"""
+
+active_10gain = """active_10gain
+*""" + library + """*
+*
+v99 99 0 DC 5
+v100 100 0 DC -5
+r1 1 2 300
+r2 2 3 3k
+x1 0 2 3 99 100 0 opamp
 .end
 """
 
@@ -142,6 +153,7 @@ x1 1 2 99 100 0 semigaussian
 
 runs = [
 (active_emitter_follower,"Bread_Emitter_follower",["3"]),
+(active_10gain,"Bread_10gain",["3"]),
 (active_100gain,"Bread_100gain",["3"]),
 (active_high_pass,"Bread_High_Pass",["2"]),
 (active_low_pass,"Bread_Low_Pass",["2"]),
@@ -159,12 +171,9 @@ for circuit, savename, probes in runs:
     sa.analyzeAC(savename+".png",1,0,probes,1,"1","10000k",debug=False)
     sa.analyzeManyTrans(savename+"_trans.png",1,0,probes[0],
           [
-              "PULSE(0,1,100u,0,0,2000u,10000u)",
-              "PULSE(0,1,100u,0,0,100u,10000u)",
-              "PULSE(0,1,100u,0,0,10u,10000u)",
-              "PULSE(0,1,100u,0,0,1u,10000u)",
-              "PULSE(0,1,100u,0,0,100n,10000u)",
-              "PULSE(0,1,100u,0,0,10n,10000u)",
+            
+              # pulse args are initial val, pulsed val, delay, rise time, fall time, pulse width, period.
+              "PULSE(0,0.1,100u,0,0,2000u,10000u)",
               # "SIN(0,1,500,0,0)", # offset, amp, freq, delay, damping
           ],
-          "10u",0,"10000u",debug=False)
+          "10u",0,"1000u",debug=False)

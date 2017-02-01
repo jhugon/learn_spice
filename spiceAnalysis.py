@@ -163,7 +163,7 @@ class SpiceAnalyzer(object):
       xdatas.append(xdata)
       ydatas.append(ydata)
       ytitles.append(ytitle)
-    ydataDBs = [20*numpy.log(ydata/mag) for ydata in ydatas]
+    ydataDBs = [20*numpy.log10(ydata/mag) for ydata in ydatas]
     for iCol in range(len(outProbes)):
       label = outProbes[iCol]
       ax1.semilogx(xdatas[iCol],ydataDBs[iCol],label=label)
