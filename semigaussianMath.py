@@ -77,16 +77,21 @@ for real, imag in [(real5,imag5),(real7,imag7)]:
   ax.set_ylabel("m=R1/R2")
   ax.set_title("Allowed Values of m given Q and n")
   m = logspace(-1,1)
+  e12Series = [1.0,1.2,1.5,1.8,2.2,2.7,3.3,3.9,4.7,5.6,6.8,8.2]
+  e24Series = [1.0,1.1,1.2,1.3,1.5,1.6,1.8,2.0,2.2,2.4,2.7,3.0,3.3,3.6,3.9,4.3,4.7,5.1,5.6,6.2,6.8,7.5,8.2,9.1]
   print("{:1}  {:9}  {:9}  {:9}".format("i","m","n","R2C2"))
   for i in range(1,len(w)):
       n = (Q[i-1]*(1+m))**2/m
       ax.semilogy(n,m,label="Term: {}".format(i))
-      nCalc = 2
-      mCalc = findmGivennQ(nCalc,Q[i-1])
-      if isnan(mCalc):
-        nCalc = 3
+      nCalc = None
+      mCalc = None
+      #for nTry in e12Series:
+      for nTry in e24Series:
+        nCalc = nTry
         mCalc = findmGivennQ(nCalc,Q[i-1])
-      ax.plot(nCalc,mCalc,label="n={:1.0f}, m={:.3f}".format(nCalc,mCalc),ls="",marker="o")
+        if not isnan(mCalc):
+          break
+      ax.plot(nCalc,mCalc,label="n={:1.1f}, m={:.3f}".format(nCalc,mCalc),ls="",marker="o")
       R2C2 = 1/(w[i]*sqrt(mCalc*nCalc))
       print("{:1}  {:9.7f}  {:9.7f}  {:9.7f}".format(i,mCalc,nCalc,R2C2))
   ax.legend(loc="best")
