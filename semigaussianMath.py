@@ -28,10 +28,20 @@ def semiGaussianLowPassH(s,wList,QList):
         result *= quadraticLowPassH(s,wList[i],QList[i-1])
     return result
 
-def findmGivennQ(n,Q,greaterThanOne=True):
+def findmGivennQSallenKey(n,Q,greaterThanOne=True):
     Q2 = Q**2
     firstTerm =  n/(2*Q2) - 1.
     secondTerm = sqrt(n*(n-4*Q2))/(2*Q2)
+    if greaterThanOne:
+      result = firstTerm+secondTerm
+    else:
+      result = firstTerm-secondTerm
+    return result
+
+def findmGivennQMFB(n,Q,greaterThanOne=True):
+    Q2 = Q**2
+    firstTerm =  (n-4*Q2)/(8*Q2) 
+    secondTerm = sqrt(n**2-8*Q2*n)/(8*Q2)
     if greaterThanOne:
       result = firstTerm+secondTerm
     else:
@@ -79,21 +89,32 @@ for real, imag in [(real5,imag5),(real7,imag7)]:
   m = logspace(-1,1)
   e12Series = [1.0,1.2,1.5,1.8,2.2,2.7,3.3,3.9,4.7,5.6,6.8,8.2]
   e24Series = [1.0,1.1,1.2,1.3,1.5,1.6,1.8,2.0,2.2,2.4,2.7,3.0,3.3,3.6,3.9,4.3,4.7,5.1,5.6,6.2,6.8,7.5,8.2,9.1]
-  print("{:1}  {:9}  {:9}  {:9}".format("i","m","n","R2C2"))
+  print("{:1}  {:9}  {:9}  {:9}  {:9}  {:9}  {:9}".format("i","mSK","nSK","R2C2SK","mMFB","nMFB","R2C2MFB"))
   for i in range(1,len(w)):
-      n = (Q[i-1]*(1+m))**2/m
-      ax.semilogy(n,m,label="Term: {}".format(i))
-      nCalc = None
-      mCalc = None
+      nSK = (Q[i-1]*(1+m))**2/m
+      ax.semilogy(nSK,m,label="SK Term: {}".format(i))
+      nMFB = (Q[i-1]*(1+2*m))**2/m
+      ax.semilogy(nMFB,m,label="MFB Term: {}".format(i))
+      nCalcSK = None
+      mCalcSK = None
       #for nTry in e12Series:
       for nTry in e24Series:
-        nCalc = nTry
-        mCalc = findmGivennQ(nCalc,Q[i-1])
-        if not isnan(mCalc):
+        nCalcSK = nTry
+        mCalcSK = findmGivennQSallenKey(nCalcSK,Q[i-1])
+        if not isnan(mCalcSK):
           break
-      ax.plot(nCalc,mCalc,label="n={:1.1f}, m={:.3f}".format(nCalc,mCalc),ls="",marker="o")
-      R2C2 = 1/(w[i]*sqrt(mCalc*nCalc))
-      print("{:1}  {:9.7f}  {:9.7f}  {:9.7f}".format(i,mCalc,nCalc,R2C2))
+      ax.plot(nCalcSK,mCalcSK,label="SK n={:1.1f}, m={:.3f}".format(nCalcSK,mCalcSK),ls="",marker="o")
+      R2C2SK = 1/(w[i]*sqrt(mCalcSK*nCalcSK))
+      nCalcMFB = None
+      mCalcMFB = None
+      for nTry in e24Series:
+        nCalcMFB = nTry
+        mCalcMFB = findmGivennQMFB(nCalcMFB,Q[i-1])
+        if not isnan(mCalcMFB):
+          break
+      R2C2MFB = 1/(w[i]*sqrt(mCalcMFB*nCalcMFB))
+      ax.plot(nCalcMFB,mCalcMFB,label="MFB n={:1.1f}, m={:.3f}".format(nCalcMFB,mCalcMFB),ls="",marker="o")
+      print("{:1}  {:9.7f}  {:9.7f}  {:9.7f}  {:9.7f}  {:9.7f}  {:9.7f}".format(i,mCalcSK,nCalcSK,R2C2SK,mCalcMFB,nCalcMFB,R2C2MFB))
   ax.legend(loc="best")
   fig.savefig("mVn{}.png".format(order))
   #print("{:1}  {:9}  {:9} ".format("i","m1","m2"))
