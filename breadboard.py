@@ -2,6 +2,7 @@
 
 import sys
 import tempfile
+import re
 from spiceAnalysis import SpiceAnalyzer
 
 library = ""
@@ -78,17 +79,82 @@ with open("ada4637.cir") as chipfile:
 #    .OPTIONS ITL4=100
 #"""
 
+with open("TLC2274.101") as chipfile:
+  chipstr = chipfile.read()
+  library += chipstr[:-1]
+  #CMOS Quad RR op amp DIP 2 MHz
+  #* CONNECTIONS:   NON-INVERTING INPUT
+  #*                | INVERTING INPUT
+  #*                | | POSITIVE POWER SUPPLY
+  #*                | | | NEGATIVE POWER SUPPLY
+  #*                | | | | OUTPUT
+  #*                | | | | |
+  #.SUBCKT TLC2274  1 2 3 4 5
+
+with open("OPA277.txt") as chipfile:
+  chipstr = chipfile.read()
+  newchipstr = """* comatibility stuff
+.func LIMIT(x,a,b) {min(max(x, a), b)}
+.func PWR(x,a) {abs(x) ** a}
+.func PWRS(x,a) {sgn(x) * PWR(x,a)}
+.func stp(x) {u(x)}
+  """
+  for line in chipstr.split("\n"):
+    vswitchmodelMatch = re.search("^(\.model.*)vswitch",line.lower())
+    if vswitchmodelMatch:
+      line = line.lower()
+      ronMatch = re.search(r"\.model.+ron=([a-zA-Z0-9_-]+)",line)
+      if not ronMatch:
+        print("In VSWITCH Converter, couldn't find RON. Exiting.")
+        sys.exit(1)
+      roffMatch = re.search(r"\.model.+roff=([a-zA-Z0-9_-]+)",line)
+      if not ronMatch:
+        print("In VSWITCH Converter, couldn't find ROFF. Exiting.")
+        sys.exit(1)
+      vonMatch = re.search(r"\.model.+von=([a-zA-Z0-9_-]+)",line)
+      if not ronMatch:
+        print("In VSWITCH Converter, couldn't find VON. Exiting.")
+        sys.exit(1)
+      voffMatch = re.search(r"\.model.+voff=([a-zA-Z0-9_-]+)",line)
+      if not ronMatch:
+        print("In VSWITCH Converter, couldn't find VOFF. Exiting.")
+        sys.exit(1)
+      voff = voffMatch.group(1)
+      von = vonMatch.group(1)
+      roff = roffMatch.group(1)
+      ron = ronMatch.group(1)
+      newline = "{}aswitch(cntl_off={} cntl_on={} r_off={} r_on={} log=TRUE)".format(vswitchmodelMatch.group(1),voff,von,roff,ron)
+      newchipstr += newline + "\n"
+    else:
+      newchipstr += line + "\n"
+  library += newchipstr
+  # 1 MHz DIP High Precision
+  #.SUBCKT OPA277 +IN -IN V+ V- Vout
+
+with open("OPA227.MOD") as chipfile:
+  chipstr = chipfile.read()
+  library += chipstr
+  # 8 MHz DIP Precision Low Noise
+  #* PINOUT        3   2   7  4  6
+  #* PINOUT ORDER +IN -IN +V -V OUT
+  #.SUBCKT OPA227 3 2 7 4 6
+
+
 library += """
 
 *
 * 1 input+, 2 input-, 3 output, 4 +V supply, 5 -V supply, 6 ground
 .subckt opamp 1 2 3 4 5 6
 *E1 3 6 1 2 1e8
-*x1 1 2 4 5 3 LM324
-x1 1 2 4 5 3 LM318
-*x1 1 2 4 5 3 AD8651
-*x1 1 2 4 5 3 ADA4627
-*x1 1 2 4 5 3 ADA4637
+****x1 1 2 4 5 3 LM318
+****x1 1 2 4 5 3 AD8651
+****x1 1 2 4 5 3 ADA4627
+****x1 1 2 4 5 3 ADA4637
+*
+x1 1 2 4 5 3 LM324
+*x1 1 2 4 5 3 TLC2274
+*x1 1 2 4 5 3 OPA277
+*x1 1 2 4 5 3 OPA227
 .ends
 *
 * all filters below are input, output, +supply, -supply, ground
