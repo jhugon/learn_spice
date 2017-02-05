@@ -28,6 +28,16 @@ def semiGaussianLowPassH(s,wList,QList):
         result *= quadraticLowPassH(s,wList[i],QList[i-1])
     return result
 
+def findmGivennQ(n,Q,greaterThanOne=True):
+    Q2 = Q**2
+    firstTerm =  n/(2*Q2) - 1.
+    secondTerm = sqrt(n*(n-4*Q2))/(2*Q2)
+    if greaterThanOne:
+      result = firstTerm+secondTerm
+    else:
+      result = firstTerm-secondTerm
+    return result
+
 # A
 real5 = [1.4766878,1.4166647,1.2036832]
 real7 = [1.6610245,1.6229725,1.4949993,1.2344141]
@@ -67,9 +77,18 @@ for real, imag in [(real5,imag5),(real7,imag7)]:
   ax.set_ylabel("m=R1/R2")
   ax.set_title("Allowed Values of m given Q and n")
   m = logspace(-1,1)
+  print("{:1}  {:9}  {:9}  {:9}".format("i","m","n","R2C2"))
   for i in range(1,len(w)):
-      nCalc = (Q[i-1]*(1+m))**2/m
-      ax.semilogy(nCalc,m,label="Term: {}".format(i))
+      n = (Q[i-1]*(1+m))**2/m
+      ax.semilogy(n,m,label="Term: {}".format(i))
+      nCalc = 2
+      mCalc = findmGivennQ(nCalc,Q[i-1])
+      if isnan(mCalc):
+        nCalc = 3
+        mCalc = findmGivennQ(nCalc,Q[i-1])
+      ax.plot(nCalc,mCalc,label="n={:1.0f}, m={:.3f}".format(nCalc,mCalc),ls="",marker="o")
+      R2C2 = 1/(w[i]*sqrt(mCalc*nCalc))
+      print("{:1}  {:9.7f}  {:9.7f}  {:9.7f}".format(i,mCalc,nCalc,R2C2))
   ax.legend(loc="best")
   fig.savefig("mVn{}.png".format(order))
   #print("{:1}  {:9}  {:9} ".format("i","m1","m2"))
