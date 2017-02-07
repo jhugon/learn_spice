@@ -140,21 +140,21 @@ with open("OPA227.MOD") as chipfile:
   #.SUBCKT OPA227 3 2 7 4 6
 
 
-library = """
+library += """
 
 *
 * 1 input+, 2 input-, 3 output, 4 +V supply, 5 -V supply, 6 ground
 .subckt opamp 1 2 3 4 5 6
-E1 3 6 1 2 1e8
 ****x1 1 2 4 5 3 LM318
-****x1 1 2 4 5 3 AD8651
-****x1 1 2 4 5 3 ADA4627
-****x1 1 2 4 5 3 ADA4637
+****x2 1 2 4 5 3 AD8651
+****x3 1 2 4 5 3 ADA4627
+****x4 1 2 4 5 3 ADA4637
 *
-*x1 1 2 4 5 3 LM324
-*x1 1 2 4 5 3 TLC2274
-*x1 1 2 4 5 3 OPA277
-*x1 1 2 4 5 3 OPA227
+*E1 3 6 1 2 1e8
+x5 1 2 4 5 3 LM324
+*x6 1 2 4 5 3 TLC2274
+*x7 1 2 4 5 3 OPA277
+*x8 1 2 4 5 3 OPA227
 .ends
 *
 *
