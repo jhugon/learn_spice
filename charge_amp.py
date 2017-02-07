@@ -11,15 +11,16 @@ E1 3 4 1 2 1e8
 *
 *
 *
+* 1e-4 wT, 1e-3 wF, 1e5 gain
 * 1 input+, 2 input-, 3 output, 4 ground
 .subckt charge_amp 2 0 5 0
-rf 2 3 1Meg
-cf 2 3 1n
+rf 2 3 100k
+cf 2 3 10n
 xin 0 2 3 0 opamp
-rc 3 4 100k
-cc 3 4 10n
-rt 4 5 100k
-ct 4 5 1n
+rc 3 4 1Meg
+cc 3 4 1n
+rt 4 5 10k
+ct 4 5 10n
 xt 0 4 5 0 opamp
 .ends
 """
@@ -27,11 +28,11 @@ xt 0 4 5 0 opamp
 charge_amp = """charge_amp
 *""" + library + """*
 *
-ri 1 0 100k
-ci 1 0 1p
+ri 1 0 1Meg
+ci 1 0 100p
 * blocking cap or not
-*cb 1 2 1u
-rb 1 2 0
+cb 1 2 1u
+*rb 1 2 0
 *
 xca 2 0 3 0 charge_amp
 .end
@@ -40,7 +41,7 @@ xca 2 0 3 0 charge_amp
 charge_amp_test_cap = """charge_amp_test_cap
 *""" + library + """*
 *
-ct 1 2 1n
+ct 1 2 100n
 rt 1 2 1000G
 *
 xca 2 0 3 0 charge_amp
@@ -81,8 +82,8 @@ with tempfile.TemporaryFile(mode="w+") as circuitFile:
   sa = SpiceAnalyzer(circuitFile)
   sa.analyzeManyTrans(savename+"Charge_Amplifier_Test_Cap_singletrans.png",1,0,"3",
         [
-            "PULSE(0,0.1,0,0,0,10u,1)",
-            "PULSE(0,0.1,0,0,0,100u,1)",
-            "PULSE(0,0.1,0,0,0,1m,1)",
+            "PULSE(0,1,0,0,0,10u,1)",
+            "PULSE(0,1,0,0,0,100u,1)",
+            "PULSE(0,1,0,0,0,1m,1)",
         ],
         "1u",0,"2m",current=False,debug=False)
