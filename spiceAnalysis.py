@@ -211,6 +211,8 @@ class SpiceAnalyzer(object):
     Finds the lowest frequency where the gain < 0 dBc.
     Returns None if it is the first freqency in the list.
     """
+    if vDBc is None or len(vDBc) == 0:
+      return None
     isBelowUnityGain = vDBc < 0
     result = None
     if not isBelowUnityGain[0]:
@@ -224,6 +226,8 @@ class SpiceAnalyzer(object):
     Finds the lowest frequency where the phase changes sign.
     Returns None if one is not found
     """
+    if phaseDeg is None or len(phaseDeg) == 0:
+      return None
     signIsPos = phaseDeg > 0
     posFreqs = freqs[signIsPos]
     negFreqs = freqs[numpy.logical_not(signIsPos)]

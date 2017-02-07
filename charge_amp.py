@@ -11,33 +11,27 @@ E1 3 4 1 2 1e8
 *
 * all filters below are input, output, grnd
 *
-.subckt sklowpass2 1 4 0
-r1 1 2 500
-r2 2 3 500
-c1 2 4 1n
-c2 3 0 1n
-x1 3 4 4 0 opamp
-.ends
 *
 """
 
 charge_amp = """charge_amp
 *""" + library + """*
 *
-ci 1 0 100p
+ri 1 0 100
+ci 1 0 1p
 rf 1 2 1Meg
-cf 1 2 1p
+cf 1 2 1n
 xin 0 1 2 0 opamp
-co 2 3 1n
-ro 2 3 1K
-xbuf1 3 4 4 0 opamp
-xshape1 4 5 0 sklowpass2
-xshape2 5 6 0 sklowpass2
+rc 2 3 1Meg
+cc 2 3 1n
+rt 3 4 100k
+ct 3 4 1n
+xt 0 3 4 0 opamp
 .end
 """
 
 runs = [
-(charge_amp,"Charge Amplifier",["6"]),
+(charge_amp,"Charge Amplifier",["3"]),
 ]
 
 for circuit, savename, probes in runs:
@@ -46,18 +40,19 @@ for circuit, savename, probes in runs:
     circuitFile.flush()
     circuitFile.seek(0)
     sa = SpiceAnalyzer(circuitFile)
+    #sa.analyzeAC(savename+"_ac.png",1,0,probes,1,"10","100M",debug=False)
     sa.analyzeManyTrans(savename+"_singletrans.png",1,0,probes[0],
           [
-              "PULSE(0,1p,10n,0,0,20n,10000u)",
-              "PULSE(0,2p,10n,0,0,20n,10000u)",
-              "PULSE(0,3p,10n,0,0,20n,10000u)",
+              "PULSE(0,1n,0,0,0,10u,1)",
+              "PULSE(0,2n,0,0,0,10u,1)",
+              "PULSE(0,3n,0,0,0,10u,1)",
           ],
-          "1000p",0,"10u",current=True,debug=False)
-    sa.analyzeManyTrans(savename+"_manytrans.png",1,0,probes[0],
-          [
-              "PULSE(0,1p,10n,0,0,20n,1u)",
-              "PULSE(0,1p,10n,0,0,20n,2u)",
-              "PULSE(0,1p,10n,0,0,20n,3u)",
-              "PULSE(0,1p,10n,0,0,20n,4u)",
-          ],
-          "1000p",0,"10u",current=True,debug=False)
+          "100n",0,"1m",current=True,debug=False)
+    #sa.analyzeManyTrans(savename+"_manytrans.png",1,0,probes[0],
+    #      [
+    #          "PULSE(0,1n,0,0,0,10u,10u)",
+    #          "PULSE(0,1n,0,0,0,10u,20u)",
+    #          "PULSE(0,1n,0,0,0,10u,30u)",
+    #          "PULSE(0,1n,0,0,0,10u,40u)",
+    #      ],
+    #      "100n",0,"10m",current=True,debug=False)
