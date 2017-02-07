@@ -142,7 +142,7 @@ class SpiceAnalyzer(object):
       print(ydata)
     return xdata, ydata, xtitle, ytitle
 
-  def analyzeAC(self,outFileName,inNodePlus,inNodeMinus,outProbes,mag,fstart,fstop,pointsPerDecade=5,debug=False):
+  def analyzeAC(self,outFileName,inNodePlus,inNodeMinus,outProbes,mag,fstart,fstop,pointsPerDecade=5,current=False,debug=False):
     """
     outProbes is a list of things like '2' or '3,0' that can be put inside v() or vm().
     """
@@ -170,7 +170,10 @@ class SpiceAnalyzer(object):
     for outProbe in outProbes:
       outPhaseProbe = "vp({})".format(outProbe)
       template = TemplateModifier(self.circuitTemplateFile)
-      template.addACSource("vac",inNodePlus,inNodeMinus,mag)
+      if current:
+        template.addACSource("iac",inNodePlus,inNodeMinus,mag)
+      else:
+        template.addACSource("vac",inNodePlus,inNodeMinus,mag)
       template.addACAnalysis(outPhaseProbe,pointsPerDecade,fstart,fstop)
       circuitFileName = template.getFile()
       xdata,ydata, xtitle, ytitle = self.runSpice(circuitFileName,debug)
