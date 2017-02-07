@@ -4,8 +4,9 @@ import sys
 import tempfile
 import re
 from spiceAnalysis import SpiceAnalyzer
+from spiceAnalysis import library as LIBRARY
 
-library = ""
+library = LIBRARY
 
 with open("LM324.5_1") as lm324file:
   lm324str = lm324file.read()
@@ -150,11 +151,12 @@ library += """
 ****x3 1 2 4 5 3 ADA4627
 ****x4 1 2 4 5 3 ADA4637
 *
-*E1 3 6 1 2 1e8
+*x0 1 2 3 4 5 6 idealopamp
 x5 1 2 4 5 3 LM324
 *x6 1 2 4 5 3 TLC2274
 *x7 1 2 4 5 3 OPA277
 *x8 1 2 4 5 3 OPA227
+*x9 1 2 3 4 5 6 idealopamp1k
 .ends
 *
 *

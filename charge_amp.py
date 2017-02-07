@@ -2,8 +2,9 @@
 
 import tempfile
 from spiceAnalysis import SpiceAnalyzer
+from spiceAnalysis import library as LIBRARY
 
-library = ""
+library = LIBRARY
 
 with open("LM324.5_1") as lm324file:
   lm324str = lm324file.read()
@@ -101,7 +102,7 @@ with open("OPA227.MOD") as chipfile:
 library += """*
 * 1 input+, 2 input-, 3 output, 4 +V supply, 5 -V supply, 6 ground
 .subckt opamp 1 2 3 99 100 4
-E1 3 4 1 2 1e8
+x0 1 2 3 99 100 4 idealopamp
 *x1 1 2 99 100 3 LM324
 *x2 1 2 99 100 3 LM318
 *x3 1 2 99 100 3 ADA4627

@@ -318,6 +318,82 @@ class SpiceAnalyzer(object):
     ax.legend(loc="best")
     fig.savefig(outFileName)
 
+library = """*
+*
+* 1 input+, 2 input-, 3 output, 4 +V supply, 5 -V supply, 6 ground for all
+*
+* Ideal opamp
+.subckt idealopamp 1 2 3 99 100 4
+E1 3 4 1 2 1e8
+.ends
+*
+* Ideal compensated opamp 1kHz GBW, 1e5 DC Gain
+.subckt idealopamp1k 1 2 3 99 100 4
+E5 5 4 1 2 1e5
+r1 5 6 1e4
+c1 6 4 1e-3
+E6 3 4 6 4 1
+.ends
+*
+* Ideal compensated opamp 10kHz GBW, 1e5 DC Gain
+.subckt idealopamp10k 1 2 3 99 100 4
+E5 5 4 1 2 1e5
+r1 5 6 1e4
+c1 6 4 1e-4
+E6 3 4 6 4 1
+.ends
+*
+* Ideal compensated opamp 100kHz GBW, 1e5 DC Gain
+.subckt idealopamp100k 1 2 3 99 100 4
+E5 5 4 1 2 1e5
+r1 5 6 1e4
+c1 6 4 1e-5
+E6 3 4 6 4 1
+.ends
+*
+* Ideal compensated opamp 1MHz GBW, 1e5 DC Gain
+.subckt idealopamp1M 1 2 3 99 100 4
+E5 5 4 1 2 1e5
+r1 5 6 1e4
+c1 6 4 1e-6
+E6 3 4 6 4 1
+.ends
+*
+* Ideal compensated opamp 10MHz GBW, 1e5 DC Gain
+.subckt idealopamp10M 1 2 3 99 100 4
+E5 5 4 1 2 1e5
+r1 5 6 1e4
+c1 6 4 1e-7
+E6 3 4 6 4 1
+.ends
+*
+* Ideal compensated opamp 100MHz GBW, 1e5 DC Gain
+.subckt idealopamp100M 1 2 3 99 100 4
+E5 5 4 1 2 1e5
+r1 5 6 1e4
+c1 6 4 1e-8
+E6 3 4 6 4 1
+.ends
+*
+* Ideal compensated opamp 1GHz GBW, 1e5 DC Gain
+.subckt idealopamp1G 1 2 3 99 100 4
+E5 5 4 1 2 1e5
+r1 5 6 1e4
+c1 6 4 1e-9
+E6 3 4 6 4 1
+.ends
+*
+* Ideal compensated opamp 10GHz GBW, 1e5 DC Gain
+.subckt idealopamp10G 1 2 3 99 100 4
+E5 5 4 1 2 1e5
+r1 5 6 1e4
+c1 6 4 1e-10
+E6 3 4 6 4 1
+.ends
+*
+*
+"""
+
 if __name__ == "__main__":
   sa = SpiceAnalyzer("example.cir.template")
   sa.analyzeAC("test.png",1,0,["2","3","4"],100,.01,10)

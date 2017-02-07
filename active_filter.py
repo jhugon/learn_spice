@@ -2,8 +2,9 @@
 
 import tempfile
 from spiceAnalysis import SpiceAnalyzer
+from spiceAnalysis import library as LIBRARY
 
-library = """*
+library = LIBRARY + """*
 * 1 input+, 2 input-, 3 output, 4 ground
 .subckt opamp 1 2 3 4
 E1 3 4 1 2 1e8
