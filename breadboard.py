@@ -146,12 +146,12 @@ library += """
 *
 * 1 input+, 2 input-, 3 output, 4 +V supply, 5 -V supply, 6 ground
 .subckt opamp 1 2 3 4 5 6
-x1 1 2 3 4 5 6 idealopamp
 ****x1 1 2 4 5 3 LM318
 ****x1 1 2 4 5 3 AD8651
 ****x1 1 2 4 5 3 ADA4627
 ****x1 1 2 4 5 3 ADA4637
 *
+x1 1 2 3 4 5 6 idealopamp
 *x1 1 2 4 5 3 LM324
 *x1 1 2 4 5 3 TLC2274
 *x1 1 2 4 5 3 OPA277

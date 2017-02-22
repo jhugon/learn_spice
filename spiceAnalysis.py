@@ -196,7 +196,9 @@ class SpiceAnalyzer(object):
     ax2.set_xlabel("Frequency [Hz]")
     ax2.set_ylabel(r"Phase [$^\circ$]")
     ax1.legend(loc="best")
-    fig.savefig(outFileName)
+    if not(outFileName is None):
+      fig.savefig(outFileName)
+    return freqGains,magnitudeDBs,freqPhases,phaseDegs
 
   def getGainPhaseMargin(self,freqGain,magnitudeDB,freqPhase,phaseDeg):
     gainMargin = None
@@ -279,7 +281,8 @@ class SpiceAnalyzer(object):
     ax.set_xlabel(xtitle)
     ax.set_ylabel("V")
     ax.legend(loc="best")
-    fig.savefig(outFileName)
+    if not(outFileName is None):
+      fig.savefig(outFileName)
 
   def analyzeManyTrans(self,outFileName,inNodePlus,inNodeMinus,outProbe,sourceStrs,tstep,tstart,tstop,current=False,debug=False):
     """
@@ -316,7 +319,45 @@ class SpiceAnalyzer(object):
     ax.set_xlabel(xtitle)
     ax.set_ylabel(outProbe)
     ax.legend(loc="best")
+    if not(outFileName is None):
+      fig.savefig(outFileName)
+
+def analyzeACManyCir(circuitTemplateFiles,outFileName,inNodePluses,inNodeMinuses,outProbes,labels,mag,fstart,fstop,pointsPerDecade=5,current=False,debug=False):
+  freqGains = []
+  magnitudeDBs = []
+  freqPhases = []
+  phaseDegs = []
+  for circuitTemplateFile, inNodePlus, inNodeMinus, outProbe in zip(circuitTemplateFiles,inNodePluses, inNodeMinuses, outProbes):
+    sa = SpiceAnalyzer(circuitTemplateFile)
+    freqGain, magnitudeDB, freqPhase, phaseDeg = sa.analyzeAC(None,inNodePlus,inNodeMinus,outProbe,mag,fstart,fstop,pointsPerDecade=pointsPerDecade,current=current,debug=debug)
+    if len(freqGains) > 1:
+      raise Exception("freqGains should have length 1, freqGains: %s",freqGains)
+    assert(len(freqGains) == len(freqPhases))
+    freqGains.append(freqGain[0])
+    magnitudeDBs.append(magnitudeDB[0])
+    freqPhases.append(freqPhase[0])
+    phaseDegs.append(phaseDeg[0])
+  fig, axs = mpl.subplots(2)
+  ax1 = axs[0]
+  ax2 = axs[1]
+  for iCol in range(len(circuitTemplateFiles)):
+    #gainMargin, phaseMargin = self.getGainPhaseMargin(freqGains[iCol],magnitudeDBs[iCol],freqPhases[iCol],phaseDegs[iCol])
+    label = labels[iCol]
+    #if not (gainMargin is None):
+    #  label += ", GM: {:.0f} dB".format(gainMargin)
+    #if not (phaseMargin is None):
+    #  label += r", PM: {:.0f}$^\circ$".format(phaseMargin)
+    ax1.semilogx(freqGains[iCol],magnitudeDBs[iCol],label=label)
+  #ax1.set_xlabel("Frequency [Hz]")
+  ax1.set_ylabel("V [dBc]")
+  for iCol in range(len(circuitTemplateFiles)):
+    ax2.semilogx(freqPhases[iCol],phaseDegs[iCol],label=label)
+  ax2.set_xlabel("Frequency [Hz]")
+  ax2.set_ylabel(r"Phase [$^\circ$]")
+  ax1.legend(loc="best")
+  if not(outFileName is None):
     fig.savefig(outFileName)
+    
 
 library = """*
 *
@@ -421,3 +462,5 @@ if __name__ == "__main__":
             "PULSE(0,1,10u,0,0,200u,100u)",
         ],
         "0.25u",0,"100u",debug=False)
+
+  analyzeACManyCir(["example.cir.template","high_pass.cir.template"],"testMany.png",[1,1],[0,0],["4","2"],["example","high pass"],100,0.01,"1Meg",debug=False)
