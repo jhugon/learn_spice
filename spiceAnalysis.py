@@ -283,6 +283,7 @@ class SpiceAnalyzer(object):
     ax.legend(loc="best")
     if not(outFileName is None):
       fig.savefig(outFileName)
+    return xdatas,ydatas
 
   def analyzeManyTrans(self,outFileName,inNodePlus,inNodeMinus,outProbe,sourceStrs,tstep,tstart,tstop,current=False,debug=False):
     """
@@ -357,7 +358,27 @@ def analyzeACManyCir(circuitTemplateFiles,outFileName,inNodePluses,inNodeMinuses
   ax1.legend(loc="best")
   if not(outFileName is None):
     fig.savefig(outFileName)
-    
+
+def analyzeTransManyCir(circuitTemplateFiles,outFileName,inNodePluses,inNodeMinuses,outProbes,labels,sourceStr,tstep,tstart,tstop,current=False,debug=False):
+  xdatas = []
+  ydatas = []
+  for circuitTemplateFile, inNodePlus, inNodeMinus, outProbe in zip(circuitTemplateFiles,inNodePluses, inNodeMinuses, outProbes):
+    sa = SpiceAnalyzer(circuitTemplateFile)
+    xdata, ydata = sa.analyzeTrans(None,inNodePlus,inNodeMinus,outProbe,sourceStr,tstep,tstart,tstop,current=current,debug=debug)
+    if len(xdata) > 1:
+      raise Exception("xdata should have length 1, xdata: %s",xdata)
+    assert(len(xdata) == len(ydata))
+    xdatas.append(xdata)
+    ydatas.append(ydata)
+  fig, ax = mpl.subplots()
+  for iCol in range(len(circuitTemplateFiles)):
+    print("lskdjf")
+    ax.plot(xdatas[iCol],ydatas[iCol],label=labels[iCol])
+  ax.set_xlabel("Time")
+  ax.set_ylabel("V")
+  #ax.legend(loc="best")
+  if not(outFileName is None):
+    fig.savefig(outFileName)
 
 library = """*
 *
@@ -464,3 +485,4 @@ if __name__ == "__main__":
         "0.25u",0,"100u",debug=False)
 
   analyzeACManyCir(["example.cir.template","high_pass.cir.template"],"testMany.png",[1,1],[0,0],["4","2"],["example","high pass"],100,0.01,"1Meg",debug=False)
+  analyzeTransManyCir(["example.cir.template","high_pass.cir.template"],"testManyTrans.png",[1,1],[0,0],["4","2"],["example","high pass"],"PULSE(0,1,0.1,0,0,3.0,100.)",0.01,0,5.,debug=False)
