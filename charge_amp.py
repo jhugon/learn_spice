@@ -78,26 +78,17 @@ with open("ada4637.cir") as chipfile:
 #    .OPTIONS ITL4=100
 #"""
 
-with open("TLC2274.101") as chipfile:
-  chipstr = chipfile.read()
-  library += chipstr[:-1]
-  #CMOS Quad RR op amp DIP 2 MHz
-  #* CONNECTIONS:   NON-INVERTING INPUT
-  #*                | INVERTING INPUT
-  #*                | | POSITIVE POWER SUPPLY
-  #*                | | | NEGATIVE POWER SUPPLY
-  #*                | | | | OUTPUT
-  #*                | | | | |
-  #.SUBCKT TLC2274  1 2 3 4 5
-
-with open("OPA227.MOD") as chipfile:
+with open("ada4001.cir") as chipfile:
   chipstr = chipfile.read()
   library += chipstr
-  # 8 MHz DIP Precision Low Noise
-  #* PINOUT        3   2   7  4  6
-  #* PINOUT ORDER +IN -IN +V -V OUT
-  #.SUBCKT OPA227 3 2 7 4 6
-
+  # 16.7 MHz SMD JFET, Low Noise, Low Ib, RRO
+  #*                non-inverting input
+  #*                | inverting input
+  #*                | | positive supply
+  #*                | | |  negative supply
+  #*                | | |  |  output
+  #*                | | |  |  |
+  #.SUBCKT ADA4001  1 2 99 50 45
 
 library += """*
 * 1 input+, 2 input-, 3 output, 4 +V supply, 5 -V supply, 6 ground
@@ -106,6 +97,7 @@ x0 1 2 3 99 100 4 idealopamp
 *x1 1 2 99 100 3 LM324
 *x2 1 2 99 100 3 LM318
 *x3 1 2 99 100 3 ADA4627
+*x4 1 2 99 100 3 ADA4001
 .ends
 *
 *
