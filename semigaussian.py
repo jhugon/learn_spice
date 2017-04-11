@@ -185,18 +185,18 @@ x1 2 0 3 99 100 0 buffer
 .ends
 *
 .subckt semigausmfb51 1 0 4 99 100 0
-r2 1 2 4.8093e2
-r1 2 3 34.135
-r3 2 4 4.8093e2
+r2 1 2 480.93
+r1 2 3 340.72
+r3 2 4 480.93
 c1 2 0 2.4n
 c2 3 4 1n
 x1 0 3 4 99 100 0 opamp
 .ends
 *
 .subckt semigausmfb52 1 0 4 99 100 0
-r2 1 2 2.9288e2
-r1 2 3 23.69
-r3 2 4 2.9288e2
+r2 1 2 292.88
+r1 2 3 236.9
+r3 2 4 292.88
 c1 2 0 3.9n
 c2 3 4 1n
 x1 0 3 4 99 100 0 opamp
@@ -226,6 +226,7 @@ xb1 1 0 4 99 100 0 buffer
 x0 4 0 5 99 100 0 semigausmfb50
 x1 5 0 6 99 100 0 semigausmfb51
 x2 6 0 7 99 100 0 semigausmfb52
+xb2 7 0 8 99 100 0 buffer
 .end
 """
 
@@ -254,7 +255,7 @@ xb5 10 0 11 99 100 0 buffer
 
 runs = [
 (active_mfb,"MFB_Filter",["2"]),
-(active_semigaussian,"Semigaussian_Filter",["7"]),
+(active_semigaussian,"Semigaussian_Filter",["8"]),
 (active_crrc4,"CRRC4_Filter",["11"]),
 ]
 
