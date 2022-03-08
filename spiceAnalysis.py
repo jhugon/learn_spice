@@ -18,11 +18,11 @@ class TemplateModifier(object):
     self.tmpFiles = []
 
   def addACSource(self,name,nodePlus,nodeMinus,mag,phase=0.):
-    line = "{0} {1:d} {2:d} AC {3} {4}".format(name,nodePlus,nodeMinus,mag,phase)
+    line = "{0} {1} {2} AC {3} {4}".format(name,nodePlus,nodeMinus,mag,phase)
     self.sourceLines.append(line)
 
   def addTransSource(self,name,nodePlus,nodeMinus,sourceStr):
-    line = "{0} {1:d} {2:d} {3}".format(name,nodePlus,nodeMinus,sourceStr)
+    line = "{0} {1} {2} {3}".format(name,nodePlus,nodeMinus,sourceStr)
     self.sourceLines.append(line)
 
   def addACAnalysis(self,node,pointsPerDecade,fstart,fstop):
@@ -134,6 +134,7 @@ class SpiceAnalyzer(object):
       print(stderr.read())
     if debug:
       output.seek(0)
+      print("output:")
       print(output.read())
     output.seek(0)
     xdata,ydata, xtitle, ytitle = self.getData(output)
