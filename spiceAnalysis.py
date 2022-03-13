@@ -274,14 +274,14 @@ class SpiceAnalyzer(object):
       xdatas.append(xdata)
       ydatas.append(ydata)
       ytitles.append(ytitle)
-    fig, ax = mpl.subplots()
-    for iCol in range(len(outProbes)):
-      label = outProbes[iCol]
-      ax.plot(xdatas[iCol],ydatas[iCol],label=label)
-    ax.set_xlabel(xtitle)
-    ax.set_ylabel("V")
-    ax.legend(loc="best")
     if not(outFileName is None):
+      fig, ax = mpl.subplots()
+      for iCol in range(len(outProbes)):
+        label = outProbes[iCol]
+        ax.plot(xdatas[iCol],ydatas[iCol],label=label)
+      ax.set_xlabel(xtitle)
+      ax.set_ylabel("V")
+      ax.legend(loc="best")
       fig.savefig(outFileName)
     return xdatas,ydatas
 
@@ -362,6 +362,15 @@ def analyzeACManyCir(circuitTemplateFiles,outFileName,inNodePluses,inNodeMinuses
 def analyzeTransManyCir(circuitTemplateFiles,outFileName,inNodePluses,inNodeMinuses,outProbes,labels,sourceStr,tstep,tstart,tstop,current=False,debug=False):
   xdatas = []
   ydatas = []
+  nCircuits = len(circuitTemplateFiles)
+  if len(inNodePluses) != nCircuits:
+    raise Exception(f"Length of inNodePluses doesn't match length of circuitTemplateFiles. {len(inNodePluses)} != {nCircuits}")
+  if len(inNodeMinuses) != nCircuits:
+    raise Exception(f"Length of inNodeMinuses doesn't match length of circuitTemplateFiles. {len(inNodeMinuses)} != {nCircuits}")
+  if len(outProbes) != nCircuits:
+    raise Exception(f"Length of outProbes doesn't match length of circuitTemplateFiles. {len(outProbes)} != {nCircuits}")
+  if len(labels) != nCircuits:
+    raise Exception(f"Length of labels doesn't match length of circuitTemplateFiles. {len(labels)} != {nCircuits}")
   for circuitTemplateFile, inNodePlus, inNodeMinus, outProbe in zip(circuitTemplateFiles,inNodePluses, inNodeMinuses, outProbes):
     sa = SpiceAnalyzer(circuitTemplateFile)
     xdata, ydata = sa.analyzeTrans(None,inNodePlus,inNodeMinus,outProbe,sourceStr,tstep,tstart,tstop,current=current,debug=debug)
@@ -371,14 +380,18 @@ def analyzeTransManyCir(circuitTemplateFiles,outFileName,inNodePluses,inNodeMinu
     xdatas.append(xdata)
     ydatas.append(ydata)
   fig, ax = mpl.subplots()
-  for iCol in range(len(circuitTemplateFiles)):
-    print("lskdjf")
-    ax.plot(xdatas[iCol],ydatas[iCol],label=labels[iCol])
+  for iCir in range(nCircuits):
+    for iProbe in range(len(outProbes[iCir])):
+        label = None
+        if labels[iCir]:
+            label="{}: {}".format(labels[iCir],outProbes[iCir][iProbe])
+        ax.plot(xdatas[iCir][iProbe],ydatas[iCir][iProbe],label=label)
   ax.set_xlabel("Time")
   ax.set_ylabel("V")
-  #ax.legend(loc="best")
+  ax.legend(loc="best")
   if not(outFileName is None):
     fig.savefig(outFileName)
+  return xdatas, ydatas
 
 library = """*
 *
