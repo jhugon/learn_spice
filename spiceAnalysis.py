@@ -341,8 +341,8 @@ class SpiceAnalyzer(object):
     impulseString = f"PULSE(0,{impulseHeight},0,{tstep},{tstep},{tstep},{tstop*1000})"
     stepString = f"PWL(0,0,{tstep},1)"
     freqs = None
-    tImpulse = None
-    tStep = None
+    tImpulseList = []
+    tStepList = []
     magList = []
     phaseList = []
     vImpulseList = []
@@ -351,6 +351,8 @@ class SpiceAnalyzer(object):
         freqs,mags,_,phases = sa.analyzeAC(None,inNodePlus,inNodeMinus,[outProbe],1,fstart,fstop,debug=debug)
         tImpulse, vImpulse = sa.analyzeTrans(None,inNodePlus,inNodeMinus,[outProbe],impulseString,tstep,tstart,tstop,debug=debug)
         tStep, vStep = sa.analyzeTrans(None,inNodePlus,inNodeMinus,[outProbe],stepString,tstep,tstart,tstop,debug=debug)
+        tImpulseList.append(tImpulse)
+        tStepList.append(tStep)
         magList.append(mags)
         phaseList.append(phases)
         vImpulseList.append(vImpulse)
@@ -360,9 +362,9 @@ class SpiceAnalyzer(object):
         ax_g.plot(freqs[0],mag[0],label=label)
     for phase,label in zip(phaseList,labelList):
         ax_p.plot(freqs[0],phase[0],label=label)
-    for vImpulse,label in zip(vImpulseList,labelList):
+    for tImpulse,vImpulse,label in zip(tImpulseList,vImpulseList,labelList):
         ax_i.plot(tImpulse[0],vImpulse[0],label=label)
-    for vStep,label in zip(vStepList,labelList):
+    for tStep,vStep,label in zip(tStepList,vStepList,labelList):
         ax_s.plot(tStep[0],vStep[0],label=label)
     ax_p.set_xlabel("Frequency [Hz]")
     ax_g.set_ylabel("Voltage Gain/Loss [dB]")
