@@ -4,3 +4,5 @@
 log*
 __pycache__
 LM324.5_1
+.*~
+.*.swp
