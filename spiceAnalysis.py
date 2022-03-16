@@ -327,15 +327,43 @@ class SpiceAnalyzer(object):
     """
     Plots voltage gain/loss, phase change, impulse response, and step response all on one 8.5" x 11" plot
     """
+    SpiceAnalyzer.analyzeFreqAndTransManySpiceAnalyzers([self],[None],savename,title,inNodePlus,inNodeMinus,outProbe,fstart,fstop,tstep,tstart,tstop,debug=False)
+
+  @staticmethod
+  def analyzeFreqAndTransManySpiceAnalyzers(spiceAnalyzerList,labelList,savename,title,inNodePlus,inNodeMinus,outProbe,fstart,fstop,tstep,tstart,tstop,debug=False):
+    """
+    Static method that takes a list of spiceAnalyzers and plots all of them like in analyzeFreqAndTrans on one plot
+    """
+
+    assert(len(spiceAnalyzerList)==len(labelList))
+
     impulseHeight = 1./(2*tstep) # set so integral of trapezoidal pulse will be 1
     impulseString = f"PULSE(0,{impulseHeight},0,{tstep},{tstep},{tstep},{tstop*1000})"
     stepString = f"PWL(0,0,{tstep},1)"
-    freqGains,magnitudeDBs,freqPhases,phaseDegs = self.analyzeAC(None,inNodePlus,inNodeMinus,[outProbe],1,fstart,fstop,debug=debug)
-    tImpulse, vImpulse = self.analyzeTrans(None,inNodePlus,inNodeMinus,[outProbe],impulseString,tstep,tstart,tstop,debug=debug)
-    tStep, vStep = self.analyzeTrans(None,inNodePlus,inNodeMinus,[outProbe],stepString,tstep,tstart,tstop,debug=debug)
+    freqs = None
+    tImpulse = None
+    tStep = None
+    magList = []
+    phaseList = []
+    vImpulseList = []
+    vStepList = []
+    for sa in spiceAnalyzerList:
+        freqs,mags,_,phases = sa.analyzeAC(None,inNodePlus,inNodeMinus,[outProbe],1,fstart,fstop,debug=debug)
+        tImpulse, vImpulse = sa.analyzeTrans(None,inNodePlus,inNodeMinus,[outProbe],impulseString,tstep,tstart,tstop,debug=debug)
+        tStep, vStep = sa.analyzeTrans(None,inNodePlus,inNodeMinus,[outProbe],stepString,tstep,tstart,tstop,debug=debug)
+        magList.append(mags)
+        phaseList.append(phases)
+        vImpulseList.append(vImpulse)
+        vStepList.append(vStep)
     fig, ((ax_g,ax_i),(ax_p,ax_s)) = mpl.subplots(nrows=2,ncols=2,figsize=(8.5,11),constrained_layout=True,sharex="col")
-    ax_g.plot(freqGains[0],magnitudeDBs[0],label="Amplitude")
-    ax_p.plot(freqPhases[0],phaseDegs[0],label="Phase")
+    for mag,label in zip(magList,labelList):
+        ax_g.plot(freqs[0],mag[0],label=label)
+    for phase,label in zip(phaseList,labelList):
+        ax_p.plot(freqs[0],phase[0],label=label)
+    for vImpulse,label in zip(vImpulseList,labelList):
+        ax_i.plot(tImpulse[0],vImpulse[0],label=label)
+    for vStep,label in zip(vStepList,labelList):
+        ax_s.plot(tStep[0],vStep[0],label=label)
     ax_p.set_xlabel("Frequency [Hz]")
     ax_g.set_ylabel("Voltage Gain/Loss [dB]")
     ax_p.set_ylabel("Phase [deg]")
@@ -345,8 +373,6 @@ class SpiceAnalyzer(object):
     ax_p.set_xlim(fstart,fstop)
     ax_g.tick_params(axis='both',which='both',direction="in",bottom=True,top=True,left=True,right=True)
     ax_p.tick_params(axis='both',which='both',direction="in",bottom=True,top=True,left=True,right=True)
-    ax_i.plot(tImpulse[0],vImpulse[0],label="Impulse")
-    ax_s.plot(tStep[0],vStep[0],label="Step")
     ax_s.set_xlabel("t [s]")
     ax_i.set_ylabel("Impulse Response [V/V]")
     ax_s.set_ylabel("Step Response [V/V]")
@@ -355,6 +381,11 @@ class SpiceAnalyzer(object):
     ax_i.tick_params(axis='both',which='both',direction="in",bottom=True,top=True,left=True,right=True)
     ax_s.tick_params(axis='both',which='both',direction="in",bottom=True,top=True,left=True,right=True)
     fig.suptitle(title)
+    if len(spiceAnalyzerList) > 1:
+        ax_g.legend(loc="best")
+        ax_p.legend(loc="best")
+        ax_i.legend(loc="best")
+        ax_s.legend(loc="best")
     fig.savefig(savename)
 
 
