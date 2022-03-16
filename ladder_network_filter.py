@@ -11,6 +11,10 @@ class LadderNetworkFilter:
     Class implementing a ladder network filter in SPICE
     """
 
+    iFirstLCNode = 110
+    iInputNode = 100
+    iOutputNode = 199
+
     def __init__(self,Clist,Llist,Rin=50,Rout=50):
         """
         For now, only low pass is implemented and only shunt first
@@ -28,9 +32,6 @@ class LadderNetworkFilter:
 
         self.order = len(Clist) + len(Llist)
         self.string = f".start {self.order}-Order Ladder Network Filter (autogen)\n"
-        self.iFirstLCNode = 110
-        self.iInputNode = 100
-        self.iOutputNode = 199
 
         self.string += self._generate_ladder_string()
         self.string += self._generate_RinRout_string()
@@ -72,10 +73,10 @@ class LadderNetworkFilter:
         return result
 
     def make_plots(self,savename,title,fstart,fstop,tstep,tstart,tstop,debug=False):
-        sa = self.getSpiceAnalyzer()
+        sa = self.get_spice_analyzer()
         sa.analyzeFreqAndTrans(savename,title,self.iInputNode,0,self.iOutputNode,fstart,fstop,tstep,tstart,tstop,debug=debug)
 
-    def getSpiceAnalyzer(self):
+    def get_spice_analyzer(self):
         try:
             self.tempfile.seek(0)
         except AttributeError as e:
@@ -84,6 +85,10 @@ class LadderNetworkFilter:
             self.tempfile.flush()
             self.tempfile.seek(0)
         return SpiceAnalyzer(self.tempfile)
+
+    @classmethod
+    def make_plots_many_filters(cls,filterList,labelList,savename,title,fstart,fstop,tstep,tstart,tstop,debug=False):
+        SpiceAnalyzer.analyzeFreqAndTransManySpiceAnalyzers([x.get_spice_analyzer() for x in filterList],labelList,savename,title,cls.iInputNode,0,cls.iOutputNode,fstart,fstop,tstep,tstart,tstop,debug=debug)
 
 
 if __name__ == "__main__":
@@ -99,4 +104,4 @@ if __name__ == "__main__":
 
     filters = [butterworth3,bessel3,bessel5]
     filterLabels = ["Butterworth 3O","Bessel 3O","Bessel 5O"]
-    SpiceAnalyzer.analyzeFreqAndTransManySpiceAnalyzers([x.getSpiceAnalyzer() for x in filters],filterLabels,"LadderFilters.pdf","Comparison of Ladder Filters",100,0,199,1e-3,1e3,1e-3,0,3,debug=False)
+    LadderNetworkFilter.make_plots_many_filters(filters,filterLabels,"LadderFilters.pdf","Comparison of Ladder Filters",1e-3,1e3,1e-3,0,3,debug=False)
