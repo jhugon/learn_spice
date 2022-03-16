@@ -98,6 +98,8 @@ class LadderNetworkFilter:
 
 if __name__ == "__main__":
 
-    lnf = LadderNetworkFilter([1,1],[2])
-    print(lnf.string)
-    lnf.make_plots("LadderNetwork.pdf","3rd Order Ladder Network",1e-3,1e3,1e-3,0,20,debug=False)
+    import numpy as np
+
+    lnf = LadderNetworkFilter([1./50/2/np.pi,1./50/2/np.pi],[2*50./2/np.pi])
+    #print(lnf.string)
+    lnf.make_plots("LadderNetwork.pdf","3rd Order Butterworth Pi-Ladder Network",1e-3,1e3,1e-3,0,5,debug=False)
