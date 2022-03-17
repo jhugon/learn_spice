@@ -42,6 +42,15 @@ class TemplateModifier(object):
     line = ".print tran {}".format(node)
     self.sourceLines.append(line)
 
+  def addPoleZeroAnalysis(self,inNodePlus,inNodeMinus,outNodePlus,outNodeMinus,current=False):
+    typeStr = "vol"
+    if current:
+        typeStr = "cur"
+    line = ".pz {0:d} {1:d} {2:d} {3:d} {4} pz".format(inNodePlus,inNodeMinus,outNodePlus,outNodeMinus,typeStr)
+    self.sourceLines.append(line)
+    line = ".print pz all"
+    self.sourceLines.append(line)
+
   def clearSources(self):
     self.sourceLines.clear()
 
@@ -87,43 +96,85 @@ class SpiceAnalyzer(object):
   def __init__(self,circuitTemplateFile):
     self.circuitTemplateFile = circuitTemplateFile
 
-  def getData(self,logfile):
+  def getData(self,logfile,pz=False):
     xtitle = None
     ytitles = None
     xdata = []
     ydata = []
+    pztypes = []
+    poles = []
+    zeros = []
     foundStart1 = False
     foundStart2 = False
     foundStart3 = False
     for line in logfile:
       if foundStart3:
-        reStr = r"^(\d+)\s+([0-9eE.+-]+)\s+([0-9eE.+-]+)\s*$"
-        datamatch = re.match(reStr,line)
-        if datamatch:
-          x = datamatch.group(2)
-          x = float(x)
-          xdata.append(x)
-          y = datamatch.group(3)
-          y = float(y)
-          ydata.append(y)
+        if pz:
+          reStrStart1 = r"^-+\s*$"
+          if re.match(reStrStart1,line):
+            foundStart1 = True
+            foundStart2 = False
+            foundStart3 = False
+            pztypes = []
+            continue
+          if not re.match(r"^0\s+.*$",line):
+            continue
+          reStr = r"([0-9eE.+-]+),\s+([0-9eE.+-]+)"
+          matches = re.findall(reStr,line)
+          if len(matches) != len(pztypes):
+            raise Exception(f"In pz output, different number of titles and values found. titles: {pztypes} values: {line}")
+          for pztype, match in zip(pztypes,matches):
+            realpart = float(match[0])
+            imagpart = float(match[1])
+            val = realpart+imagpart*1.0j
+            if pztype == "pole":
+                poles.append(val)
+            elif pztype == "zero":
+                zeros.append(val)
+            else:
+                raise Exception("Found something besides pole or zero in title")
+        else:
+          reStr = r"^(\d+)\s+([0-9eE.+-]+)\s+([0-9eE.+-]+)\s*$"
+          datamatch = re.match(reStr,line)
+          if datamatch:
+            x = datamatch.group(2)
+            x = float(x)
+            xdata.append(x)
+            y = datamatch.group(3)
+            y = float(y)
+            ydata.append(y)
       elif foundStart2:
         if re.match(r"^-+\s*$",line):
             foundStart3 = True
       elif foundStart1:
-        reStr = r"^Index\s+(\w+)\s+([a-zA-Z0-9\(\)]+)\s*$"
-        start2match = re.match(reStr,line)
-        if start2match:
-          xtitle = start2match.group(1)
-          ytitle = start2match.group(2)
-          foundStart2 = True
+        if pz:
+            if line[:5] == "Index":
+              foundStart2 = True
+              reStr = r"^Index\s+(\w+\s+)+$"
+              for heading in re.finditer("(pole)\((\d+)\)|(zero)\((\d+)\)",line[5:]):
+                pzType = heading.group(1)
+                pzNum = heading.group(2)
+                pztypes.append(pzType)
+        else:
+            reStr = r"^Index\s+(\w+)\s+([a-zA-Z0-9\(\)]+)\s*$"
+            start2match = re.match(reStr,line)
+            if start2match:
+              xtitle = start2match.group(1)
+              ytitle = start2match.group(2)
+              foundStart2 = True
       elif re.match(r"^-+\s*$",line):
         foundStart1 = True
-    xdata = numpy.array(xdata)
-    ydata = numpy.array(ydata)
-    return xdata, ydata, xtitle, ytitles
+    if pz:
+      poles = numpy.array(poles)
+      zeros = numpy.array(zeros)
+      return poles, zeros
+    else:
+      xdata = numpy.array(xdata)
+      ydata = numpy.array(ydata)
+      return xdata, ydata, xtitle, ytitles
 
 
-  def runSpice(self,circuitFileName,debug=False):
+  def runSpice(self,circuitFileName,debug=False,pz=False):
     if debug:
       print("runSpice: circuitFileName: '{}'".format(circuitFileName))
       with open(circuitFileName) as circuitFile:
@@ -143,11 +194,18 @@ class SpiceAnalyzer(object):
       output.seek(0)
       print(output.read())
     output.seek(0)
-    xdata,ydata, xtitle, ytitle = self.getData(output)
-    if debug:
-      print(xdata)
-      print(ydata)
-    return xdata, ydata, xtitle, ytitle
+    if pz:
+      poles, zeros = self.getData(output,pz=pz)
+      if debug:
+        print("poles:",poles)
+        print("zeros:",zeros)
+      return poles, zeros
+    else:
+      xdata,ydata, xtitle, ytitle = self.getData(output,pz=pz)
+      if debug:
+        print("xdata:",xdata)
+        print("ydata:",ydata)
+      return xdata, ydata, xtitle, ytitle
 
   def analyzeAC(self,outFileName,inNodePlus,inNodeMinus,outProbes,mag,fstart,fstop,pointsPerDecade=10,current=False,debug=False):
     """
@@ -296,7 +354,6 @@ class SpiceAnalyzer(object):
     """
     Zout_inputshuntR is the value of a resistor add between the input nodes when measuring Zout
     """
-    xtitle = None
     outZinProbe = "vm({},{})".format(inNodePlus,inNodeMinus)
     template = TemplateModifier(self.circuitTemplateFile)
     template.addACSource("iac",inNodePlus,inNodeMinus,1)
@@ -320,6 +377,23 @@ class SpiceAnalyzer(object):
         fig.savefig(outFileName)
     return freqs, Zin, Zout
 
+  def analyzePolesZeros(self,outFileName,inNodePlus,inNodeMinus,outNodePlus,outNodeMinus,debug=False):
+    template = TemplateModifier(self.circuitTemplateFile)
+    template.addPoleZeroAnalysis(inNodePlus,inNodeMinus,outNodePlus,outNodeMinus)
+    circuitFileName = template.getFile()
+    poles, zeros = self.runSpice(circuitFileName,debug,pz=True)
+    if not(outFileName is None):
+        fig, ax = mpl.subplots(constrained_layout=True)
+        ax.scatter(zeros.real,zeros.imag,marker="o",c="b",label="Zeros")
+        ax.scatter(poles.real,poles.imag,marker="x",c="b",label="Poles")
+        ax.set_xlabel(r"$\alpha$ [rad]")
+        ax.set_ylabel(r"$j\omega$ [rad]")
+        ax.axvline(0,c="0.5",ls='--')
+        ax.axhline(0,c="0.5",ls='--')
+        ax.legend()
+        ax.set_aspect("equal")
+        fig.savefig(outFileName)
+    return poles, zeros
 
   def analyzeManyTrans(self,outFileName,inNodePlus,inNodeMinus,outProbe,sourceStrs,tstep,tstart,tstop,current=False,debug=False):
     """

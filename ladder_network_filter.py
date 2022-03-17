@@ -110,7 +110,6 @@ def synchronouslyTunedFilter(n,f0,Q,R,shunt_first=True):
     nC = n//2 + n % 2
     nL = n//2
     result = LadderNetworkFilter([C]*nC,[L]*nL,Rin=R,Rout=R,shunt_first=shunt_first)
-    print(result.string)
     return result
 
 if __name__ == "__main__":
@@ -134,10 +133,13 @@ if __name__ == "__main__":
     simpleT = LadderNetworkFilter([TotalC],[TotalL/2,TotalL/2],shunt_first=False)
     simplePi = LadderNetworkFilter([TotalC*2,TotalC*2],[TotalL])
 
-    synchPi2 = synchronouslyTunedFilter(2,1.,0.7,50.)
-    synchPi3 = synchronouslyTunedFilter(3,1.,0.7,50.)
-    synchPi4 = synchronouslyTunedFilter(4,1.,0.7,50.)
-    synchPi5 = synchronouslyTunedFilter(5,1.,0.7,50.)
+    synchPi2 = synchronouslyTunedFilter(2,1.,0.5,50.)
+    synchPi3 = synchronouslyTunedFilter(3,1.,0.5,50.)
+    synchPi4 = synchronouslyTunedFilter(4,1.,0.5,50.)
+    synchPi5 = synchronouslyTunedFilter(5,1.,0.5,50.)
+
+    poles, zeros = synchPi3.get_spice_analyzer().analyzePolesZeros(None,100,0,199,0,debug=False)
+    print("poles:",poles)
 
     filtersAndLabels = [
         #(butterworth3,"Butterworth 3O"),
