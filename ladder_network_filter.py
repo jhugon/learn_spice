@@ -97,10 +97,10 @@ if __name__ == "__main__":
 
     butterworth3 = LadderNetworkFilter([1./50/2/np.pi,1./50/2/np.pi],[2*50./2/np.pi])
     butterworth3.make_plots("LadderNetwork.pdf","3rd Order Butterworth Pi-Ladder Network",1e-3,1e3,1e-3,0,5,debug=False)
+    butterworth3.get_spice_analyzer().analyzeZinZout("ZinZout.pdf",100,0,199,0,1e-3,1e3)
 
     bessel3 = LadderNetworkFilter([0.3374/50/2/np.pi,2.2034/50/2/np.pi],[0.9705*50./2/np.pi])
     bessel5 = LadderNetworkFilter([0.1743/50/2/np.pi,0.8040/50/2/np.pi,2.2582/50/2/np.pi],[0.5072*50./2/np.pi,1.1110*50./2/np.pi])
-
 
     filters = [butterworth3,bessel3,bessel5]
     filterLabels = ["Butterworth 3O","Bessel 3O","Bessel 5O"]

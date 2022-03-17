@@ -15,7 +15,12 @@ class TemplateModifier(object):
     self.sourceLines = []
     self.optionLines = [".options noacct"]
     self.analyzerLines = []
+    self.otherLines = []
     self.tmpFiles = []
+
+  def addSimple(self,name,nodePlus,nodeMinus,val):
+    line = "{0} {1:d} {2:d} {3}".format(name,nodePlus,nodeMinus,val)
+    self.otherLines.append(line)
 
   def addACSource(self,name,nodePlus,nodeMinus,mag,phase=0.):
     line = "{0} {1:d} {2:d} AC {3} {4}".format(name,nodePlus,nodeMinus,mag,phase)
@@ -65,6 +70,8 @@ class TemplateModifier(object):
     for line in self.optionLines:
       result.write(line + "\n")
     for line in self.analyzerLines:
+      result.write(line + "\n")
+    for line in self.otherLines:
       result.write(line + "\n")
     result.write(".end"+"\n")
     result.flush()
@@ -142,7 +149,7 @@ class SpiceAnalyzer(object):
       print(ydata)
     return xdata, ydata, xtitle, ytitle
 
-  def analyzeAC(self,outFileName,inNodePlus,inNodeMinus,outProbes,mag,fstart,fstop,pointsPerDecade=5,current=False,debug=False):
+  def analyzeAC(self,outFileName,inNodePlus,inNodeMinus,outProbes,mag,fstart,fstop,pointsPerDecade=10,current=False,debug=False):
     """
     outProbes is a list of things like '2' or '3,0' that can be put inside v() or vm().
     """
@@ -285,6 +292,35 @@ class SpiceAnalyzer(object):
       fig.savefig(outFileName)
     return xdatas,ydatas
 
+  def analyzeZinZout(self,outFileName,inNodePlus,inNodeMinus,outNodePlus,outNodeMinus,fstart,fstop,pointsPerDecade=10,Zout_inputshuntR=1e-6,debug=False):
+    """
+    Zout_inputshuntR is the value of a resistor add between the input nodes when measuring Zout
+    """
+    xtitle = None
+    outZinProbe = "vm({},{})".format(inNodePlus,inNodeMinus)
+    template = TemplateModifier(self.circuitTemplateFile)
+    template.addACSource("iac",inNodePlus,inNodeMinus,1)
+    template.addACAnalysis(outZinProbe,pointsPerDecade,fstart,fstop)
+    circuitFileName = template.getFile()
+    freqs,Zin, _, _ = self.runSpice(circuitFileName,debug)
+    outZoutProbe = "vm({},{})".format(outNodePlus,outNodeMinus)
+    template = TemplateModifier(self.circuitTemplateFile)
+    template.addACSource("iac",outNodePlus,outNodeMinus,1)
+    template.addACAnalysis(outZoutProbe,pointsPerDecade,fstart,fstop)
+    template.addSimple("Rinputshunt",inNodePlus,inNodeMinus,Zout_inputshuntR)
+    circuitFileName = template.getFile()
+    freqs,Zout, _, _ = self.runSpice(circuitFileName,debug)
+    if not(outFileName is None):
+        fig, ax = mpl.subplots()
+        ax.semilogx(freqs,Zin,label="$Z_{in}$")
+        ax.semilogx(freqs,Zout,label="$Z_{out}$")
+        ax.set_xlabel("Frequency [Hz]")
+        ax.set_ylabel("Impedance [Ohms]")
+        ax.legend(loc="best")
+        fig.savefig(outFileName)
+    return freqs, Zin, Zout
+
+
   def analyzeManyTrans(self,outFileName,inNodePlus,inNodeMinus,outProbe,sourceStrs,tstep,tstart,tstop,current=False,debug=False):
     """
     Transient Analysis
@@ -345,34 +381,51 @@ class SpiceAnalyzer(object):
     tStepList = []
     magList = []
     phaseList = []
+    freqsZ = None
+    ZinList = []
+    ZoutList = []
     vImpulseList = []
     vStepList = []
     for sa in spiceAnalyzerList:
         freqs,mags,_,phases = sa.analyzeAC(None,inNodePlus,inNodeMinus,[outProbe],1,fstart,fstop,debug=debug)
+        freqsZ,Zin,Zout = sa.analyzeZinZout(None,inNodePlus,inNodeMinus,outProbe,0,fstart,fstop,debug=debug)
         tImpulse, vImpulse = sa.analyzeTrans(None,inNodePlus,inNodeMinus,[outProbe],impulseString,tstep,tstart,tstop,debug=debug)
         tStep, vStep = sa.analyzeTrans(None,inNodePlus,inNodeMinus,[outProbe],stepString,tstep,tstart,tstop,debug=debug)
-        tImpulseList.append(tImpulse)
-        tStepList.append(tStep)
         magList.append(mags)
         phaseList.append(phases)
+        ZinList.append(Zin)
+        ZoutList.append(Zout)
+        tImpulseList.append(tImpulse)
+        tStepList.append(tStep)
         vImpulseList.append(vImpulse)
         vStepList.append(vStep)
-    fig, ((ax_g,ax_i),(ax_p,ax_s)) = mpl.subplots(nrows=2,ncols=2,figsize=(8.5,11),constrained_layout=True,sharex="col")
+    fig, ((ax_g,ax_zi,ax_i),(ax_p,ax_zo,ax_s)) = mpl.subplots(nrows=2,ncols=3,figsize=(11,8.5),constrained_layout=True,sharex="col")
     for mag,label in zip(magList,labelList):
         ax_g.plot(freqs[0],mag[0],label=label)
     for phase,label in zip(phaseList,labelList):
         ax_p.plot(freqs[0],phase[0],label=label)
+    for Zin,label in zip(ZinList,labelList):
+        ax_zi.plot(freqsZ,Zin,label=label)
+    for Zout,label in zip(ZoutList,labelList):
+        ax_zo.plot(freqsZ,Zout,label=label)
     for tImpulse,vImpulse,label in zip(tImpulseList,vImpulseList,labelList):
         ax_i.plot(tImpulse[0],vImpulse[0],label=label)
     for tStep,vStep,label in zip(tStepList,vStepList,labelList):
         ax_s.plot(tStep[0],vStep[0],label=label)
     ax_p.set_xlabel("Frequency [Hz]")
+    ax_zo.set_xlabel("Frequency [Hz]")
     ax_g.set_ylabel("Voltage Gain/Loss [dB]")
     ax_p.set_ylabel("Phase [deg]")
+    ax_zi.set_ylabel("Input Impedance [Ohm]")
+    ax_zo.set_ylabel("Output Impedance [Ohm]")
     ax_g.set_xscale("log")
     ax_p.set_xscale("log")
+    ax_zi.set_xscale("log")
+    ax_zo.set_xscale("log")
     ax_g.set_xlim(fstart,fstop)
     ax_p.set_xlim(fstart,fstop)
+    ax_zi.set_xlim(fstart,fstop)
+    ax_zo.set_xlim(fstart,fstop)
     ax_g.tick_params(axis='both',which='both',direction="in",bottom=True,top=True,left=True,right=True)
     ax_p.tick_params(axis='both',which='both',direction="in",bottom=True,top=True,left=True,right=True)
     ax_s.set_xlabel("t [s]")
@@ -386,6 +439,8 @@ class SpiceAnalyzer(object):
     if len(spiceAnalyzerList) > 1:
         ax_g.legend(loc="best")
         ax_p.legend(loc="best")
+        ax_zi.legend(loc="best")
+        ax_zo.legend(loc="best")
         ax_i.legend(loc="best")
         ax_s.legend(loc="best")
     fig.savefig(savename)
