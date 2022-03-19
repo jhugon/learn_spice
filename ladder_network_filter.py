@@ -49,6 +49,10 @@ class LadderNetworkFilter:
         except Exception as e:
             print(f"Exception closing tempfile: {type(e)} {e}")
 
+    def __str__(self):
+        result = "LadderNetworkFilter(C={},L={},Rin={},Rout={},shunt_first={})".format(self.Clist,self.Llist,self.Rin,self.Rout,self.shunt_first)
+        return result
+
     def _generate_ladder_string(self):
         Clist = self.Clist
         Llist = self.Llist

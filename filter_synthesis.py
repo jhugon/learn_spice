@@ -3,6 +3,7 @@
 from scipy import signal
 import matplotlib.pyplot as plt
 import numpy as np
+from ladder_network_filter import LadderNetworkFilter
 
 def polynomial_array_strip_high_order_zeros(x):
     while len(x) > 0:
@@ -69,7 +70,7 @@ def polynomial_continued_fraction_decomp(n,d):
     else:
         return result + polynomial_continued_fraction_decomp(d,rn)
 
-def cauerI_synthesis(n,d):
+def cauerI_synthesis(n,d,R=1.):
     """
     Use Cauer I synthesis to make a LC low-pass filter from the trans-impedance
         (Z_{21}) transfer function given by the numerator, n, and denominator, d,
@@ -83,6 +84,8 @@ def cauerI_synthesis(n,d):
 
     d: an array of denominator coefficients, where d[i] corresponds to the
         coefficient of the s^i term
+
+    R: the assumed source and load impedance
 
     returns (C,L), where C is an array of capacitances in F and L is an array
         of inductances in H.
@@ -116,9 +119,6 @@ def cauerI_synthesis(n,d):
     term_is_z = (np.arange(len(cfd_s_coefs)) % 2)
     if zfirst:
         term_is_z = np.logical_not(term_is_z)
-    print(cfd_s_coefs)
-    print(zfirst)
-    print(term_is_z)
 
     # cfd_s_coefs and term_is_z both go from output to input port, so reverse
     terms_flipped = np.flip(cfd_s_coefs)
@@ -130,15 +130,23 @@ def cauerI_synthesis(n,d):
         C = 1./C
     if not term_is_z_flipped[1]:
         L = 1./L
-    print(C)
-    print(L)
+    C /= R
+    L *= R
+    lnf = LadderNetworkFilter(C,L,Rin=R,Rout=R,shunt_first=True)
+    return lnf
 
 if __name__ == "__main__":
-    n = [0,24,0,30,0,9]
-    d = [8,0,36,0,18]
-    print(polynomial_divide(n,d))
-    print(polynomial_continued_fraction_decomp(n,d))
+    real_pole_filter2 = cauerI_synthesis([1],[1,2,1])
+    print("1/(s+1)^2 filter: ",real_pole_filter2)
+    print("Poles: {}, Zeros: {}".format(*real_pole_filter2.get_poles_zeros()))
+    #real_pole_filter2.make_plots("Real_Pole_Filter2.pdf",r"$\frac{1}{(s+1)^2}$ Cauer I Synthesis",1e-3,1e3,1e-3,0,5)
+    real_pole_filter3 = cauerI_synthesis([1],[8,12,6,1])
+    print("1/(s+2)^3 filter: ",real_pole_filter3)
+    print("Poles: {}, Zeros: {}".format(*real_pole_filter3.get_poles_zeros()))
+    #real_pole_filter3.make_plots("Real_Pole_Filter3.pdf",r"$\frac{1}{(s+2)^3}$ Cauer I Synthesis",1e-3,1e3,1e-3,0,5)
+    real_pole_filter4 = cauerI_synthesis([1],[81,108,54,12,1])
+    print("1/(s+3)^4 filter: ",real_pole_filter4)
+    print("Poles: {}, Zeros: {}".format(*real_pole_filter3.get_poles_zeros()))
+    #real_pole_filter3.make_plots("Real_Pole_Filter4.pdf",r"$\frac{1}{(s+3)^4}$ Cauer I Synthesis",1e-3,1e3,1e-3,0,5)
 
-    n = [1.]
-    d = [2,3,3,1]
-    cauerI_synthesis(n,d)
+    LadderNetworkFilter.make_plots_many_filters([real_pole_filter2,real_pole_filter3,real_pole_filter4],[r"$\frac{1}{(s+1)^2}$",r"$\frac{1}{(s+2)^3}$",r"$\frac{1}{(s+3)^4}$"],"Real_Pole_Filters.pdf","Cauer I LC Filters",1e-3,1e3,1e-3,0,5)
