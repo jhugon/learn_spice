@@ -5,9 +5,9 @@ import matplotlib.pyplot as plt
 import numpy as np
 from ladder_network_filter import LadderNetworkFilter
 
-def polynomial_array_strip_high_order_zeros(x):
+def polynomial_array_strip_high_order_zeros(x,tol=1e-10):
     while len(x) > 0:
-        if x[-1] != 0.:
+        if abs(x[-1]) > tol:
             break
         x = x[:-1]
     return x
@@ -136,17 +136,30 @@ def cauerI_synthesis(n,d,R=1.):
     return lnf
 
 if __name__ == "__main__":
+    from scipy import signal
+
     real_pole_filter2 = cauerI_synthesis([1],[1,2,1])
     print("1/(s+1)^2 filter: ",real_pole_filter2)
     print("Poles: {}, Zeros: {}".format(*real_pole_filter2.get_poles_zeros()))
-    #real_pole_filter2.make_plots("Real_Pole_Filter2.pdf",r"$\frac{1}{(s+1)^2}$ Cauer I Synthesis",1e-3,1e3,1e-3,0,5)
     real_pole_filter3 = cauerI_synthesis([1],[8,12,6,1])
     print("1/(s+2)^3 filter: ",real_pole_filter3)
     print("Poles: {}, Zeros: {}".format(*real_pole_filter3.get_poles_zeros()))
-    #real_pole_filter3.make_plots("Real_Pole_Filter3.pdf",r"$\frac{1}{(s+2)^3}$ Cauer I Synthesis",1e-3,1e3,1e-3,0,5)
     real_pole_filter4 = cauerI_synthesis([1],[81,108,54,12,1])
     print("1/(s+3)^4 filter: ",real_pole_filter4)
     print("Poles: {}, Zeros: {}".format(*real_pole_filter3.get_poles_zeros()))
-    #real_pole_filter3.make_plots("Real_Pole_Filter4.pdf",r"$\frac{1}{(s+3)^4}$ Cauer I Synthesis",1e-3,1e3,1e-3,0,5)
-
     LadderNetworkFilter.make_plots_many_filters([real_pole_filter2,real_pole_filter3,real_pole_filter4],[r"$\frac{1}{(s+1)^2}$",r"$\frac{1}{(s+2)^3}$",r"$\frac{1}{(s+3)^4}$"],"Real_Pole_Filters.pdf","Cauer I LC Filters",1e-3,1e3,1e-3,0,5)
+
+    tf2 = signal.TransferFunction([1],list(reversed([1,2,1])))
+    tf4 = signal.TransferFunction([1],list(reversed([81,108,54,12,1])))
+    from filter_design import plot_filter_behavior
+    plot_filter_behavior(tf2,"Real_Pole_Filter2_ideal.pdf")
+    plot_filter_behavior(tf4,"Real_Pole_Filter4_ideal.pdf")
+    
+
+    bessel_filters = []
+    for i in range(2,10):
+        n, d = signal.bessel(i,1,btype="lowpass",analog=True,output="ba")
+        bessel_filters.append(cauerI_synthesis(n,d))
+    bessel_titles = ["Bessel {}O".format(i) for i in range(2,10)]
+    LadderNetworkFilter.make_plots_many_filters(bessel_filters,bessel_titles,"Bessel_Filters.pdf","Cauer I LC Bessel Filters",1e-3,1e3,1e-3,0,20)
+    
