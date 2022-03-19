@@ -104,9 +104,11 @@ def synchronouslyTunedFilter(n,f0,Q,R,shunt_first=True):
     """
 
     assert(n>1)
-    Qsection = Q*np.sqrt(2**(1/n)-1)
-    L = R/(2*np.pi*Qsection*f0)
-    C = Qsection/(2*np.pi*R*f0)
+    factor = np.sqrt(2**(1/n)-1)
+    fsection = f0*factor**(-2)
+    Qsection = Q*factor
+    L = R/(2*np.pi*Qsection*fsection)
+    C = Qsection/(2*np.pi*R*fsection)
     nC = n//2 + n % 2
     nL = n//2
     result = LadderNetworkFilter([C]*nC,[L]*nL,Rin=R,Rout=R,shunt_first=shunt_first)
@@ -133,10 +135,13 @@ if __name__ == "__main__":
     simpleT = LadderNetworkFilter([TotalC],[TotalL/2,TotalL/2],shunt_first=False)
     simplePi = LadderNetworkFilter([TotalC*2,TotalC*2],[TotalL])
 
-    synchPi2 = synchronouslyTunedFilter(2,1.,0.5,50.)
-    synchPi3 = synchronouslyTunedFilter(3,1.,0.5,50.)
-    synchPi4 = synchronouslyTunedFilter(4,1.,0.5,50.)
-    synchPi5 = synchronouslyTunedFilter(5,1.,0.5,50.)
+    R = 50.
+    Q = 0.5
+    f0 = 1
+    synchPi2 = synchronouslyTunedFilter(2,f0,Q,R)
+    synchPi3 = synchronouslyTunedFilter(3,f0,Q,R)
+    synchPi4 = synchronouslyTunedFilter(4,f0,Q,R)
+    synchPi5 = synchronouslyTunedFilter(5,f0,Q,R)
 
     poles, zeros = synchPi3.get_spice_analyzer().analyzePolesZeros(None,100,0,199,0,debug=False)
     print("poles:",poles)
@@ -157,4 +162,4 @@ if __name__ == "__main__":
     ]
     filters = [x[0] for x in filtersAndLabels]
     filterLabels = [x[1] for x in filtersAndLabels]
-    LadderNetworkFilter.make_plots_many_filters(filters,filterLabels,"LadderFilters.pdf","Comparison of Ladder Filters",1e-3,1e3,1e-3,0,3,debug=False)
+    LadderNetworkFilter.make_plots_many_filters(filters,filterLabels,"LadderFilters.pdf","Comparison of Ladder Filters",1e-3,1e3,1e-3,0,5,debug=False)

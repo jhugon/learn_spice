@@ -474,6 +474,7 @@ class SpiceAnalyzer(object):
         vImpulseList.append(vImpulse)
         vStepList.append(vStep)
     fig, ((ax_g,ax_zi,ax_i),(ax_p,ax_zo,ax_s)) = mpl.subplots(nrows=2,ncols=3,figsize=(11,8.5),constrained_layout=True,sharex="col")
+    ax_i.axhline(0.,c="0.5",ls="--")
     for mag,label in zip(magList,labelList):
         ax_g.plot(freqs[0],mag[0],label=label)
     for phase,label in zip(phaseList,labelList):
