@@ -84,6 +84,13 @@ class LadderNetworkFilter:
         sa = self.get_spice_analyzer()
         sa.analyzeFreqAndTrans(savename,title,self.iInputNode,0,self.iOutputNode,fstart,fstop,tstep,tstart,tstop,debug=debug)
 
+    def get_poles_zeros(self,debug=False):
+        """
+        returns (poles,zeros), where each is a numpy array of complex numbers
+        """
+        sa = self.get_spice_analyzer()
+        return sa.analyzePolesZeros(None,self.iInputNode,0,self.iOutputNode,0,debug=debug)
+
     def get_spice_analyzer(self):
         try:
             self.tempfile.seek(0)
@@ -143,7 +150,7 @@ if __name__ == "__main__":
     synchPi4 = synchronouslyTunedFilter(4,f0,Q,R)
     synchPi5 = synchronouslyTunedFilter(5,f0,Q,R)
 
-    poles, zeros = synchPi3.get_spice_analyzer().analyzePolesZeros(None,100,0,199,0,debug=False)
+    poles, zeros = synchPi3.get_poles_zeros()
     print("poles:",poles)
 
     filtersAndLabels = [
@@ -163,3 +170,11 @@ if __name__ == "__main__":
     filters = [x[0] for x in filtersAndLabels]
     filterLabels = [x[1] for x in filtersAndLabels]
     LadderNetworkFilter.make_plots_many_filters(filters,filterLabels,"LadderFilters.pdf","Comparison of Ladder Filters",1e-3,1e3,1e-3,0,5,debug=False)
+
+    trySynthPi = LadderNetworkFilter([2/3.,1/3.],[9/2.],Rin=1.,Rout=1.)
+    trySynthPi.make_plots("TrySynthPi.pdf",r"Sythesized $\Pi$ filter for $\frac{1}{(s+1)^3}$",1e-4,1e3,13-3,0,100)
+    print(trySynthPi.string)
+    print(trySynthPi.get_poles_zeros())
+    trySynthPi2 = LadderNetworkFilter([2.],[0.5],Rin=1.,Rout=1.)
+    trySynthPi2.make_plots("TrySynthPi2.pdf",r"Sythesized $\Pi$ filter for $\frac{1}{(s+1)^2}$",1e-4,1e3,13-3,0,100)
+    print(trySynthPi2.get_poles_zeros())
