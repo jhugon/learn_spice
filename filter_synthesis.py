@@ -137,6 +137,7 @@ def cauerI_synthesis(n,d,R=1.):
 
 if __name__ == "__main__":
     from scipy import signal
+    from filter_design import semi_gaussian_complex_all_pole_filter, plot_filters_behavior
 
     real_pole_filter2 = cauerI_synthesis([1],[1,2,1])
     print("1/(s+1)^2 filter: ",real_pole_filter2)
@@ -151,10 +152,7 @@ if __name__ == "__main__":
 
     tf2 = signal.TransferFunction([1],list(reversed([1,2,1])))
     tf4 = signal.TransferFunction([1],list(reversed([81,108,54,12,1])))
-    from filter_design import plot_filter_behavior
-    plot_filter_behavior(tf2,"Real_Pole_Filter2_ideal.pdf")
-    plot_filter_behavior(tf4,"Real_Pole_Filter4_ideal.pdf")
-    
+    plot_filters_behavior([tf2,tf4],["2nd Order","4th Order"],"Real Pole Filters, Ideal Behavior","Real_Pole_Filter_ideal.pdf")
 
     bessel_filters = []
     for i in range(2,10):
@@ -163,3 +161,12 @@ if __name__ == "__main__":
     bessel_titles = ["Bessel {}O".format(i) for i in range(2,10)]
     LadderNetworkFilter.make_plots_many_filters(bessel_filters,bessel_titles,"Bessel_Filters.pdf","Cauer I LC Bessel Filters",1e-3,1e3,1e-3,0,20)
     
+    semi_gaus_filters = []
+    semi_gaus_titles = ["Semi-Gaus {}O".format(i) for i in range(3,6)]
+    for i in range(3,6):
+        tf = semi_gaussian_complex_all_pole_filter(i).to_tf()
+        print(tf.den)
+        semi_gaus_filters.append(cauerI_synthesis([1.],tf.den))
+    LadderNetworkFilter.make_plots_many_filters(semi_gaus_filters,semi_gaus_titles,"Synth_Semi_Gaus.pdf","Cauer I LC Filters",1e-3,1e3,1e-3,0,7)
+
+    LadderNetworkFilter.make_plots_many_filters([bessel_filters[1],semi_gaus_filters[0],real_pole_filter3],[bessel_titles[1],semi_gaus_titles[0],r"$\frac{1}{(s+2)^3}$"],"Synth_Comparison.pdf","Cauer I LC Filters",1e-3,1e3,1e-3,0,7)

@@ -513,12 +513,22 @@ class SpiceAnalyzer(object):
     fig.suptitle(title)
     if len(spiceAnalyzerList) > 1:
         ax_g.legend(loc="best")
-        ax_p.legend(loc="best")
-        ax_zi.legend(loc="best")
-        ax_zo.legend(loc="best")
-        ax_i.legend(loc="best")
-        ax_s.legend(loc="best")
+        #ax_p.legend(loc="best")
+        #ax_zi.legend(loc="best")
+        #ax_zo.legend(loc="best")
+        #ax_i.legend(loc="best")
+        #ax_s.legend(loc="best")
     fig.savefig(savename)
+
+    for label,tImpulse,vImpulse,tStep,vStep in zip(labelList,tImpulseList,vImpulseList,tStepList,vStepList):
+        max_impulse = vImpulse[0].max()
+        iMax_impulse = vImpulse[0].argmax()
+        max_step = vStep[0].max()
+        t10pct_step = tStep[0][vStep[0] >= max_step*0.1][0]
+        t90pct_step = tStep[0][vStep[0] >= max_step*0.9][0]
+        t100pct_impulse = tImpulse[0][vImpulse[0] == max_impulse][0]
+        t10pct_impulse = tImpulse[0][iMax_impulse:][vImpulse[0][iMax_impulse:] <= max_impulse*0.1][0]
+        print(f"{label:50} impulse 0-100%: {t100pct_impulse:5.2f} 100-10%: {t10pct_impulse-t100pct_impulse:5.2f} max: {max_impulse:4.2f} step 10-90%: {t90pct_step-t10pct_step:5.2f} max: {max_step:4.2f}")
 
 
 def analyzeACManyCir(circuitTemplateFiles,outFileName,inNodePluses,inNodeMinuses,outProbes,labels,mag,fstart,fstop,pointsPerDecade=5,current=False,debug=False):

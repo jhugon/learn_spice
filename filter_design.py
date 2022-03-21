@@ -183,4 +183,4 @@ if __name__ == "__main__":
         (semi_gaussian_complex_all_pole_filter(4),"Semi-Gaussian C4 Filter"),
         (semi_gaussian_complex_all_pole_filter(5),"Semi-Gaussian C5 Filter"),
     ]
-    plot_filters_behavior([x[0] for x in filters_to_plot],[x[1] for x in filters_to_plot],"Filter Design","Filter_Design.pdf",t_max=15)
+    plot_filters_behavior([x[0] for x in filters_to_plot],[x[1] for x in filters_to_plot],"Filter Design","Filter_Design.pdf",t_max=7)
