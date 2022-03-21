@@ -63,8 +63,8 @@ def semi_gaussian_complex_pole_locations(N,out_img_fn=None):
     0 = 1 - Sum_1^N s^{2*i}/i!
     """
 
-    if N > 5 or N < 2:
-        raise NotImplemented("Only orders 2-5 converge")
+    assert(N >= 2)
+    assert(N <= 5)
 
     def eqn(s):
         result = 1.+0j
@@ -72,8 +72,8 @@ def semi_gaussian_complex_pole_locations(N,out_img_fn=None):
             result += (-1.)**i*s**(2*i)/special.factorial(i)
         return result
 
-    a = np.linspace(-2,0,300)
-    b = np.linspace(-2,2,300)
+    a = np.linspace(-1.9,-0.9,200)
+    b = np.linspace(0.1,2,200)
     av,bv = np.meshgrid(a,b)
     cv = av+bv*1j
     cf = eqn(cv)
@@ -82,7 +82,7 @@ def semi_gaussian_complex_pole_locations(N,out_img_fn=None):
     agood = av[mf < 0.1]
     bgood = bv[mf < 0.1]
     obsgood = np.column_stack([agood,bgood])
-    centroids2, labels = cluster.vq.kmeans2(obsgood,N,minit="++")
+    centroids2, labels = cluster.vq.kmeans2(obsgood,N//2,minit="++")
 
     if out_img_fn:
         fig, ax = plt.subplots(constrained_layout=True)
@@ -93,27 +93,44 @@ def semi_gaussian_complex_pole_locations(N,out_img_fn=None):
         ax.set_ylabel("Im(s)")
         fig.colorbar(pcm)
         fig.savefig(out_img_fn)
+    assert(len(centroids2) == N//2)
 
-    poles = np.zeros(N,dtype="complex64")
+    poles = np.zeros(int(np.ceil(N/2)),dtype="complex64")
     for iPole in range(centroids2.shape[0]):
         centroid = centroids2[iPole]
         x0 = centroid[0]+centroid[1]*1j
         x1 = x0 + 0.05+0.05j
-        solution = optimize.root_scalar(eqn,x0=x0,x1=x1)
+        solution = optimize.root_scalar(eqn,x0=x0,x1=x1,maxiter=200)
         if not solution.converged:
             raise Exception(f"Root finding did not converge {solution}")
         poles[iPole] = solution.root
+
+    ## now have to find the real pole for odd N
+    if N % 2 == 1:
+        real_solution = optimize.root_scalar(lambda x: abs(eqn(x)),x0=-1.25,x1=-1.30)
+        if not real_solution.converged:
+            raise Exception(f"Real root finding did not converge {solution}")
+        poles[-1] = real_solution.root
+
+    ## Check poles aren't the same or on the right half plane
+    for iPole, pole in enumerate(poles):
+        if pole.real > 0.:
+            raise Exception(f"Found pole on the right half plane: {poles}")
+        for jPole in range(iPole+1,len(poles)):
+            if abs(pole-poles[jPole]) < 1e-6:
+                raise Exception(f"Found identical poles: {poles}")
+
     return poles
     
 
 def semi_gaussian_complex_all_pole_filter(N,out_img_fn=None):
-    poles = semi_gaussian_complex_pole_locations(N,out_img_fn=out_img_fn)
-    Q = abs(poles)/2/poles.real
-    print(poles,Q)
-    #if N % 2 == 0:
-    #    pass
-    #else:
-    #    raise NotImplemented(f"Odd order ({N}) not implemented yet")
+    poles = semi_gaussian_complex_pole_locations(N)
+    #poles *= 0.2
+    f = signal.ZerosPolesGain([],poles,[1])
+    _, resp = f.freqresp([1e-9])
+    scale_factor = 1./abs(resp)
+    f = signal.ZerosPolesGain([],poles,scale_factor)
+    return f
 
 
 if __name__ == "__main__":
@@ -141,15 +158,14 @@ if __name__ == "__main__":
     print(semi_gaussian_C3_filter.to_tf())
 
     for i in range(2,6):
-        semi_gaussian_complex_all_pole_filter(i,f"GaussianPoleLocations_{i}.png")
-    sys.exit(0)
+        semi_gaussian_complex_pole_locations(i,f"GaussianPoleLocations_{i}.png")
 
     filters_to_plot = [
         (real_all_pole_filter,"Real All-Pole Filter"),
         (complex_pole_filter,"Complex Pole Filter"),
         (semi_gaussian_C3_filter,"Semi-Gaussian C3 Filter (from paper)"),
-        (semi_gaussian_complex_all_pole_filter(2),"Semi-Gaussian C2 Filter"),
-        #(semi_gaussian_complex_all_pole_filter(3),"Semi-Gaussian C3 Filter"),
+        #(semi_gaussian_complex_all_pole_filter(2),"Semi-Gaussian C2 Filter"),
+        (semi_gaussian_complex_all_pole_filter(3),"Semi-Gaussian C3 Filter"),
         #(semi_gaussian_complex_all_pole_filter(4),"Semi-Gaussian C4 Filter"),
         #(semi_gaussian_complex_all_pole_filter(5),"Semi-Gaussian C5 Filter"),
     ]
