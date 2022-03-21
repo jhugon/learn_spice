@@ -16,7 +16,7 @@ def plot_filters_behavior(systems,labels,title,savename,t_max=7,f_min=1e-3,f_max
         _, y_impulse = signal.impulse(system,T=ts)
         _, y_step = signal.step(system,T=ts)
         w, mag, phase = signal.bode(system,w=ws)
-        system_results.append((label,y_impulse,y_step,w,mag,phase))
+        system_results.append((label,abs(y_impulse),abs(y_step),w,mag,phase))
 
     fig, ((ax_f, ax_i), (ax_p, ax_s)) = plt.subplots(nrows=2,ncols=2,figsize=(11.,8.5),constrained_layout=True,sharex="col")
     ax_f.set_xscale("log")
@@ -55,6 +55,16 @@ def plot_filters_behavior(systems,labels,title,savename,t_max=7,f_min=1e-3,f_max
     fig.suptitle(title)
 
     fig.savefig(savename)
+
+    for label,y_impulse,y_step,w,mag,phase in system_results:
+        max_impulse = y_impulse.max()
+        iMax_impulse = y_impulse.argmax()
+        max_step = y_step.max()
+        t10pct_step = ts[y_step >= max_step*0.1][0]
+        t90pct_step = ts[y_step >= max_step*0.9][0]
+        t100pct_impulse = ts[y_impulse == max_impulse][0]
+        t10pct_impulse = ts[iMax_impulse:][y_impulse[iMax_impulse:] <= max_impulse*0.1][0]
+        print(f"{label:50} impulse 0-100%: {t100pct_impulse:5.2f} 100-10%: {t10pct_impulse-t100pct_impulse:5.2f} max: {max_impulse:4.2f} step 10-90%: {t90pct_step-t10pct_step:5.2f} max: {max_step:4.2f}")
 
 def semi_gaussian_complex_pole_locations(N,out_img_fn=None):
     """
@@ -95,7 +105,7 @@ def semi_gaussian_complex_pole_locations(N,out_img_fn=None):
         fig.savefig(out_img_fn)
     assert(len(centroids2) == N//2)
 
-    poles = np.zeros(int(np.ceil(N/2)),dtype="complex64")
+    poles = np.zeros(int(np.ceil(N/2)),dtype="complex128")
     for iPole in range(centroids2.shape[0]):
         centroid = centroids2[iPole]
         x0 = centroid[0]+centroid[1]*1j
@@ -125,7 +135,12 @@ def semi_gaussian_complex_pole_locations(N,out_img_fn=None):
 
 def semi_gaussian_complex_all_pole_filter(N,out_img_fn=None):
     poles = semi_gaussian_complex_pole_locations(N)
-    #poles *= 0.2
+    if N == 3:
+        poles *= 0.83
+    elif N == 4:
+        poles *= 0.75
+    elif N == 5:
+        poles *= 1.36
     f = signal.ZerosPolesGain([],poles,[1])
     _, resp = f.freqresp([1e-9])
     scale_factor = 1./abs(resp)
@@ -144,7 +159,7 @@ if __name__ == "__main__":
     #real_all_pole_filter = signal.ZerosPolesGain([],[alpha]*n,[1])
     real_all_pole_filter = signal.ZerosPolesGain([],[normalized_alpha]*n,[1])
 
-    complex_pole_filter = signal.ZerosPolesGain([],[-2+0.4j]*3,[1])
+    complex_pole_filter = signal.ZerosPolesGain([],[-2+0.4j]*3,[8.48476847])
 
     # From https://www.bnl.gov/tcp/uploads/files/BSA11-10j.pdf "Shaper Design
     # in CMOS for High Dynamic Range" by G De Geronimo and S Li
@@ -155,7 +170,6 @@ if __name__ == "__main__":
     zeta1 = 0.5/Q1
     p1 =-zeta1*w1 + 1j*w1*np.sqrt(1-zeta1**2)
     semi_gaussian_C3_filter = signal.ZerosPolesGain([],[p0,p1],[1])
-    print(semi_gaussian_C3_filter.to_tf())
 
     for i in range(2,6):
         semi_gaussian_complex_pole_locations(i,f"GaussianPoleLocations_{i}.png")
@@ -166,7 +180,7 @@ if __name__ == "__main__":
         (semi_gaussian_C3_filter,"Semi-Gaussian C3 Filter (from paper)"),
         #(semi_gaussian_complex_all_pole_filter(2),"Semi-Gaussian C2 Filter"),
         (semi_gaussian_complex_all_pole_filter(3),"Semi-Gaussian C3 Filter"),
-        #(semi_gaussian_complex_all_pole_filter(4),"Semi-Gaussian C4 Filter"),
-        #(semi_gaussian_complex_all_pole_filter(5),"Semi-Gaussian C5 Filter"),
+        (semi_gaussian_complex_all_pole_filter(4),"Semi-Gaussian C4 Filter"),
+        (semi_gaussian_complex_all_pole_filter(5),"Semi-Gaussian C5 Filter"),
     ]
     plot_filters_behavior([x[0] for x in filters_to_plot],[x[1] for x in filters_to_plot],"Filter Design","Filter_Design.pdf",t_max=15)
