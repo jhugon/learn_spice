@@ -13,26 +13,34 @@ def plot_filter_behavior(system,savename):
 
     w, mag, phase = signal.bode(system)
 
-    fig, (ax_t, ax_f) = plt.subplots(nrows=2,figsize=(8.5,11.),constrained_layout=True)
+    fig, ((ax_f, ax_i), (ax_p, ax_s)) = plt.subplots(nrows=2,ncols=2,figsize=(11.,8.5),constrained_layout=True,sharex="col")
 
-    ax_t.plot(t_impulse,y_impulse,label="Impulse")
-    ax_t.plot(t_step,y_step,label="Step")
-    ax_t.set_xlabel("t [rad?]")
-    ax_t.set_ylabel("V")
-    ax_t.set_title("Time-Domain Response")
+    ax_i.plot(t_impulse,y_impulse,label="Impulse")
+    ax_s.plot(t_step,y_step,label="Step")
+    ax_s.set_xlabel("t [rad?]")
+    ax_i.set_ylabel("Impulse Response [V/V]")
+    ax_s.set_ylabel("Step Response [V/V]")
     #for i in range(10):
     #    ax_t.axvline(i,ls='--',c="0.5")
-    ax_t.axhline(0.,ls='--',c="0.5")
-    ax_t.legend(loc="best")
+    ax_i.axhline(0.,ls='--',c="0.5")
+    ax_i.set_xlim(0,t_max)
+    ax_s.set_xlim(0,t_max)
 
     ax_f.plot(w,mag,label="Magnitude")
-    ax_f.plot(w,phase,label="Phase")
-    ax_f.set_xlabel("f [rad/s]")
-    ax_f.set_ylabel("Magnitude [dB] or Phase [deg]")
-    ax_f.set_title("Frequency-Domain Response")
-    ax_f.axhline(-90,ls='--',c="0.5")
-    ax_f.axhline(-180,ls='--',c="0.5")
+    ax_p.plot(w,phase,label="Phase")
+    ax_p.set_xlabel("f [rad/s]")
+    ax_f.set_ylabel("Magnitude [dB]")
+    ax_p.set_ylabel("Phase [deg]")
     #ax_f.set_ylim(-180,0)
+    ax_f.axhline(0.,ls='--',c="0.5")
+    ## Make phase labels at multiples of 45 deg
+    ax_p_yticks = np.arange(phase.min()//45,np.ceil(phase.max()/45.)+1)*45
+    ax_p.set_ylim(ax_p_yticks[0],ax_p_yticks[-1])
+    ax_p.set_yticks(ax_p_yticks)
+
+    ax_p.set_xlim(w[0],w[-1])
+    ax_f.set_xlim(w[0],w[-1])
+
 
     fig.savefig(savename)
 
@@ -45,6 +53,8 @@ if __name__ == "__main__":
     #real_all_pole_filter = signal.ZerosPolesGain([],[alpha]*n,[1])
     real_all_pole_filter = signal.ZerosPolesGain([],[normalized_alpha]*n,[1])
     plot_filter_behavior(real_all_pole_filter,"real_all_pole_filter.pdf")
+    import sys
+    sys.exit(0)
 
     complex_pole_filter = signal.ZerosPolesGain([],[-2+0.4j]*3,[1])
     plot_filter_behavior(complex_pole_filter,"complex_pole_filter.pdf")
