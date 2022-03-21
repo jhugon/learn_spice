@@ -63,14 +63,17 @@ def semi_gaussian_complex_pole_locations(N,out_img_fn=None):
     0 = 1 - Sum_1^N s^{2*i}/i!
     """
 
+    if N > 5 or N < 2:
+        raise NotImplemented("Only orders 2-5 converge")
+
     def eqn(s):
         result = 1.+0j
         for i in range(1,N+1):
-            result -= s**i/special.factorial(i)
+            result += (-1.)**i*s**(2*i)/special.factorial(i)
         return result
 
-    a = np.linspace(-5.5,2.5,300)
-    b = np.linspace(-5.5,5.5,300)
+    a = np.linspace(-2,0,300)
+    b = np.linspace(-2,2,300)
     av,bv = np.meshgrid(a,b)
     cv = av+bv*1j
     cf = eqn(cv)
@@ -89,7 +92,7 @@ def semi_gaussian_complex_pole_locations(N,out_img_fn=None):
         ax.set_xlabel("Re(s)")
         ax.set_ylabel("Im(s)")
         fig.colorbar(pcm)
-        fig.savefig("GaussianPoleLocations.png")
+        fig.savefig(out_img_fn)
 
     poles = np.zeros(N,dtype="complex64")
     for iPole in range(centroids2.shape[0]):
@@ -103,17 +106,19 @@ def semi_gaussian_complex_pole_locations(N,out_img_fn=None):
     return poles
     
 
-def semi_gaussian_complex_all_pole_filter(N):
-    poles = semi_gaussian_complex_pole_locations(N)
-    poles *= 0.2
-    f = signal.ZerosPolesGain([],poles,[1])
-    _, resp = f.freqresp([1e-9])
-    scale_factor = 1./abs(resp)
-    f = signal.ZerosPolesGain([],poles,scale_factor)
-    return f
+def semi_gaussian_complex_all_pole_filter(N,out_img_fn=None):
+    poles = semi_gaussian_complex_pole_locations(N,out_img_fn=out_img_fn)
+    Q = abs(poles)/2/poles.real
+    print(poles,Q)
+    #if N % 2 == 0:
+    #    pass
+    #else:
+    #    raise NotImplemented(f"Odd order ({N}) not implemented yet")
 
 
 if __name__ == "__main__":
+    import sys
+
     alpha = -1
     n = 2
     ## The peak of a real all-same-real-pole filter is delayed by (n-1)/(-alpha)
@@ -134,6 +139,10 @@ if __name__ == "__main__":
     p1 =-zeta1*w1 + 1j*w1*np.sqrt(1-zeta1**2)
     semi_gaussian_C3_filter = signal.ZerosPolesGain([],[p0,p1],[1])
     print(semi_gaussian_C3_filter.to_tf())
+
+    for i in range(2,6):
+        semi_gaussian_complex_all_pole_filter(i,f"GaussianPoleLocations_{i}.png")
+    sys.exit(0)
 
     filters_to_plot = [
         (real_all_pole_filter,"Real All-Pole Filter"),
