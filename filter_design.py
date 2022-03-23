@@ -207,11 +207,7 @@ def semi_gaussian_complex_pole_locations(N,out_img_fn=None):
             if abs(pole-poles[jPole]) < 1e-6:
                 raise Exception(f"Found identical poles: {poles}")
 
-    return poles
-    
-
-def semi_gaussian_complex_all_pole_filter(N,out_img_fn=None):
-    poles = semi_gaussian_complex_pole_locations(N)
+    # normalize to a peak delay of 1 s
     if N == 2:
         poles *= 0.8657314629
     elif N == 3:
@@ -224,6 +220,12 @@ def semi_gaussian_complex_all_pole_filter(N,out_img_fn=None):
         poles = np.hstack([poles,poles.conj()])
     else:
         poles = np.hstack([poles[:-1],poles[:-1].conj(),poles[-1]])
+
+    return poles
+    
+
+def semi_gaussian_complex_all_pole_filter(N,out_img_fn=None):
+    poles = semi_gaussian_complex_pole_locations(N)
     f = signal.ZerosPolesGain([],poles,[1])
     _, resp = f.freqresp([1e-9])
     scale_factor = 1./abs(resp)
