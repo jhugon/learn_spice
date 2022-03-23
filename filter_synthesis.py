@@ -89,6 +89,8 @@ def cauerI_synthesis(n,d,R=1.):
 
     returns (C,L), where C is an array of capacitances in F and L is an array
         of inductances in H.
+
+    ** These filters seem to be designed for infinite input impedance :-( **
     """
 
     n = np.array(n,dtype="float64")
@@ -138,6 +140,16 @@ def cauerI_synthesis(n,d,R=1.):
 if __name__ == "__main__":
     from scipy import signal
     from filter_design import semi_gaussian_complex_all_pole_filter, semi_gaussian_complex_pole_locations, plot_filters_behavior
+    import sys
+
+    def get_butterworth(n):
+        return signal.butter(n,1,btype="lowpass",analog=True,output="ba")
+    tf = signal.TransferFunction(*get_butterworth(2))
+    ladder_filter = cauerI_synthesis(*get_butterworth(2))
+    print(tf)
+    print(ladder_filter)
+
+    sys.exit(1)
 
     real_pole_filter2 = cauerI_synthesis([1],[1,2,1])
     real_pole_filter3 = cauerI_synthesis([1],[8,12,6,1])
