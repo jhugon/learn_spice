@@ -12,9 +12,79 @@ def polynomial_array_strip_high_order_zeros(x,tol=1e-10):
         x = x[:-1]
     return x
 
+def polynomial_multiply(x1,x2):
+    """
+    Performs polynomial multiplication
+
+    x1, x2: arrays of coefficients, where x[i] corresponds to the
+        coefficient of the s^i term
+
+    result is a similar array of coefficients to x1 and x2
+    """
+
+    x1 = np.array(x1,dtype="float64")
+    x2 = np.array(x2,dtype="float64")
+    # strip higher-order terms that are zero
+    x1 = polynomial_array_strip_high_order_zeros(x1)
+    x2 = polynomial_array_strip_high_order_zeros(x2)
+
+    if len(x1) == 0:
+        return x1
+    if len(x2) == 0:
+        return x2
+
+    len1 = len(x1)
+    len2 = len(x2)
+    order1 = len1-1
+    order2 = len2-1
+    order_res = order1+order2
+    len_res = order_res+1
+    tmp = np.zeros((len1,len_res),dtype="float64")
+    for shift1 in range(len1):
+        tmp[shift1,shift1:shift1+len2] = x1[shift1]*x2
+    result = tmp.sum(axis=0)
+    return result
+
+
 def polynomial_divide(n,d):
     """
-    Performs polynomial division
+    Performs polynomial division.
+
+    n: an array of numerator coefficients, where n[i] corresponds to the
+        coefficient of the s^i term
+
+    d: an array of denominator coefficients, where d[i] corresponds to the
+        coefficient of the s^i term
+
+    returns (q,rn) where q is the quotient array of coefficients, rn is the
+        remainder numerator (it can be divided by d to get the full remainder)
+    """
+
+    n = np.array(n,dtype="float64")
+    d = np.array(d,dtype="float64")
+    # strip higher-order terms that are zero
+    n = polynomial_array_strip_high_order_zeros(n)
+    d = polynomial_array_strip_high_order_zeros(d)
+    order_n = len(n)-1
+    order_d = len(d)-1
+    quotient_order = order_n-order_d
+    quotient_len = quotient_order+1
+    if quotient_len <= 0:
+        return np.zeros(1,dtype="float64"), n
+    quotient = np.zeros(quotient_len,dtype="float64")
+
+    remainder_n = np.array(n)
+    for iTerm in reversed(range(quotient_len)):
+        q_term, remainder_n = polynomial_divide_just_lead_term(remainder_n,d)
+        quotient[:iTerm+1] = q_term
+    return quotient, remainder_n
+        
+
+
+def polynomial_divide_just_lead_term(n,d):
+    """
+    Performs part of polynomial division. The quotient is only the leading term
+        of the quotient, and the remainder is the remainder of that.
 
     n: an array of numerator coefficients, where n[i] corresponds to the
         coefficient of the s^i term
@@ -120,8 +190,6 @@ def cauerI_synthesis_equal_inout_impedance(n,d,R=1.,reverse_polys=False):
     cfd = polynomial_continued_fraction_decomp(driving_point_Z_n,driving_point_Z_d)
     cfd_y = polynomial_continued_fraction_decomp(driving_point_Z_d,driving_point_Z_n)
 
-    breakpoint()
-    
     if len(cfd[0]) == 1 and abs(cfd[0][0]) < 1e-6:
         cfd.pop(0)
     else:
@@ -225,6 +293,20 @@ if __name__ == "__main__":
     from filter_design import semi_gaussian_complex_all_pole_filter, semi_gaussian_complex_pole_locations, plot_filters_behavior
     import sys
 
+    x = polynomial_multiply([1,2,3],[3,4])
+    y = polynomial_divide(x,[3,4])
+    z = polynomial_divide(x,[1,2,3])
+    cf = polynomial_continued_fraction_decomp([0,24,0,30,0,9],[8,0,36,0,18])
+    f = cauerI_synthesis_inf_in_impedance([1],[2,3,3,1])
+    sys.exit()
+
+    n = 3
+    print(signal.butter(n,1,btype="lowpass",analog=True,output="ba"))
+    print(signal.bessel(n,1,btype="lowpass",analog=True,output="ba"))
+    print(signal.cheby1(n,0.1,1,btype="lowpass",analog=True,output="ba"))
+    print(signal.cheby2(n,10,1,btype="lowpass",analog=True,output="ba"))
+
+
     # 2nd order 0.1dB Chebyshev
     zpg = signal.ZerosPolesGain([],[-0.6743+0.7075j,-0.6743-0.7075j],[1])
     print(zpg)
@@ -233,12 +315,13 @@ if __name__ == "__main__":
     ladder_filter = cauerI_synthesis_equal_inout_impedance(tf.num,tf.den,reverse_polys=True)
     print(ladder_filter)
 
-    sys.exit(1)
-
     def get_butterworth(n):
         return signal.butter(n,1,btype="lowpass",analog=True,output="ba")
     def get_bessel(n):
         return signal.bessel(n,1,btype="lowpass",analog=True,output="ba")
+
+    sys.exit(1)
+
     for i in range(2,8):
         ladder_filter = cauerI_synthesis_equal_inout_impedance(*get_bessel(i),reverse_polys=True)
         print(ladder_filter)
