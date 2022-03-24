@@ -31,7 +31,8 @@ def polynomial_divide(n,d):
     # strip higher-order terms that are zero
     n = polynomial_array_strip_high_order_zeros(n)
     d = polynomial_array_strip_high_order_zeros(d)
-    assert(len(n)>=len(d))
+    if len(n) < len(d):
+        return np.zeros(1,dtype="float64"), n
 
     qscaler = n[-1]/d[-1]
     qorder = len(n)-len(d)
@@ -70,31 +71,113 @@ def polynomial_continued_fraction_decomp(n,d):
     else:
         return result + polynomial_continued_fraction_decomp(d,rn)
 
-def cauerI_synthesis(n,d,R=1.):
+def cauerI_synthesis_equal_inout_impedance(n,d,R=1.,reverse_polys=False):
+    """
+    Use Cauer I synthesis to make a LC low-pass filter from the Vout/Vin
+        transfer function given by the numerator, n, and denominator, d, polynomials.
+        Constructs the ladder shunt (capacitor) first.
+
+    Williams, A. Analog Filter and Circuit Design Handbook. McGraw Hill (2013).
+        ISBN-13: 978-0071816717
+        Section 1.2.1
+
+    Assumes the numerator is just [1]
+
+    n: an array of numerator coefficients, where n[i] corresponds to the
+        coefficient of the s^i term. If reverse_polys is True, then the
+        coefficients are in the opposite order.
+
+    d: an array of denominator coefficients, where d[i] corresponds to the
+        coefficient of the s^i term. If reverse_polys is True, then the
+        coefficients are in the opposite order.
+
+    R: the assumed source and load impedance
+
+    returns (C,L), where C is an array of capacitances in F and L is an array
+        of inductances in H.
+    """
+
+    n = np.array(n,dtype="float64")
+    d = np.array(d,dtype="float64")
+    if reverse_polys:
+        n = np.flip(n)
+        d = np.flip(d)
+    # strip higher-order terms that are zero
+    n = polynomial_array_strip_high_order_zeros(n)
+    d = polynomial_array_strip_high_order_zeros(d)
+    assert(len(n)<=len(d))
+
+    # Only works for just 1 in the numerator for now
+    assert(len(n) == 1)
+    assert(n[0] == 1.)
+
+    driving_point_Z_n = np.array(d)
+    driving_point_Z_d = np.array(d)
+
+    driving_point_Z_n[-1] -= 1.
+    driving_point_Z_d[-1] += 1.
+
+    cfd = polynomial_continued_fraction_decomp(driving_point_Z_n,driving_point_Z_d)
+    cfd_y = polynomial_continued_fraction_decomp(driving_point_Z_d,driving_point_Z_n)
+
+    breakpoint()
+    
+    if len(cfd[0]) == 1 and abs(cfd[0][0]) < 1e-6:
+        cfd.pop(0)
+    else:
+        raise Exception(f"First element of continued fraction should be [0], not: {cfd[0]}")
+    if len(cfd[-1]) == 1 and abs(cfd[-1][0]-1.) < 1e-6:
+        cfd.pop(-1)
+    else:
+        raise Exception(f"Last element of continued fraction should be [1], not: {cfd[-1]}")
+    for x in cfd:
+        assert(len(x) == 2)
+
+    cfd_s_coefs = np.array([x[1] for x in cfd],dtype="float64")
+
+    C = cfd_s_coefs[::2]
+    L = cfd_s_coefs[1::2]
+    C /= R
+    L *= R
+
+    lnf = LadderNetworkFilter(C,L,Rin=R,Rout=R,shunt_first=True)
+    return lnf
+
+
+def cauerI_synthesis_inf_in_impedance(n,d,R=1.,reverse_polys=False):
     """
     Use Cauer I synthesis to make a LC low-pass filter from the trans-impedance
         (Z_{21}) transfer function given by the numerator, n, and denominator, d,
         polynomials. Since the trans-impedance is converted, the filter will be
         shunt-capacitor first.
 
+    **These filters are designed for infinite input impedance**
+
+    Bakshi, U. A., Bakshi, A. V. Network Analysis & Synthesis: Laplace Transform, 
+        Two Port Networks, Network Synthesis. Technical Publications (2020).
+        ISBN-13: 978-9333223515
+
     Assumes the numerator is just [1]
 
     n: an array of numerator coefficients, where n[i] corresponds to the
-        coefficient of the s^i term
+        coefficient of the s^i term. If reverse_polys is True, then the
+        coefficients are in the opposite order.
 
     d: an array of denominator coefficients, where d[i] corresponds to the
-        coefficient of the s^i term
+        coefficient of the s^i term. If reverse_polys is True, then the
+        coefficients are in the opposite order.
 
     R: the assumed source and load impedance
 
     returns (C,L), where C is an array of capacitances in F and L is an array
         of inductances in H.
-
-    ** These filters seem to be designed for infinite input impedance :-( **
     """
 
     n = np.array(n,dtype="float64")
     d = np.array(d,dtype="float64")
+    if reverse_polys:
+        n = np.flip(n)
+        d = np.flip(d)
     # strip higher-order terms that are zero
     n = polynomial_array_strip_high_order_zeros(n)
     d = polynomial_array_strip_high_order_zeros(d)
@@ -117,7 +200,7 @@ def cauerI_synthesis(n,d,R=1.):
 
     for x in cfd:
         assert(len(x) == 2)
-    cfd_s_coefs = np.array([x[1] for x in cfd])
+    cfd_s_coefs = np.array([x[1] for x in cfd],dtype="float64")
     term_is_z = (np.arange(len(cfd_s_coefs)) % 2)
     if zfirst:
         term_is_z = np.logical_not(term_is_z)
@@ -142,14 +225,23 @@ if __name__ == "__main__":
     from filter_design import semi_gaussian_complex_all_pole_filter, semi_gaussian_complex_pole_locations, plot_filters_behavior
     import sys
 
-    def get_butterworth(n):
-        return signal.butter(n,1,btype="lowpass",analog=True,output="ba")
-    tf = signal.TransferFunction(*get_butterworth(2))
-    ladder_filter = cauerI_synthesis(*get_butterworth(2))
+    # 2nd order 0.1dB Chebyshev
+    zpg = signal.ZerosPolesGain([],[-0.6743+0.7075j,-0.6743-0.7075j],[1])
+    print(zpg)
+    tf = zpg.to_tf()
     print(tf)
+    ladder_filter = cauerI_synthesis_equal_inout_impedance(tf.num,tf.den,reverse_polys=True)
     print(ladder_filter)
 
     sys.exit(1)
+
+    def get_butterworth(n):
+        return signal.butter(n,1,btype="lowpass",analog=True,output="ba")
+    def get_bessel(n):
+        return signal.bessel(n,1,btype="lowpass",analog=True,output="ba")
+    for i in range(2,8):
+        ladder_filter = cauerI_synthesis_equal_inout_impedance(*get_bessel(i),reverse_polys=True)
+        print(ladder_filter)
 
     real_pole_filter2 = cauerI_synthesis([1],[1,2,1])
     real_pole_filter3 = cauerI_synthesis([1],[8,12,6,1])
