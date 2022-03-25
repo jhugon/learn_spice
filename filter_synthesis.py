@@ -78,7 +78,7 @@ def polynomial_divide(n,d):
         q_term, remainder_n = polynomial_divide_just_lead_term(remainder_n,d)
         quotient[:iTerm+1] = q_term
     return quotient, remainder_n
-        
+
 
 
 def polynomial_divide_just_lead_term(n,d):
@@ -141,6 +141,28 @@ def polynomial_continued_fraction_decomp(n,d):
     else:
         return result + polynomial_continued_fraction_decomp(d,rn)
 
+def polynomial_sqrt(x):
+    """
+    Performs polynomial square root.
+
+    x: an array of numerator coefficients, where n[i] corresponds to the
+        coefficient of the s^i term
+    """
+
+    x = np.array(x,dtype="complex128")
+    # strip higher-order terms that are zero
+    x = polynomial_array_strip_high_order_zeros(x)
+    len_x = len(x)
+    order_x = len_x -1
+    if order_x % 2 == 1:
+        raise ValueError(f"Polynomial must have even order: {x}")
+    result_order = int(order_x/2)
+    assert(result_order*2 == order_x)
+    result_len = result_order+1
+    result = np.zeros(result_len,dtype="complex128")
+    result[-1] = np.sqrt(x[-1])
+        
+
 def cauerI_synthesis_equal_inout_impedance(n,d,R=1.,reverse_polys=False):
     """
     Use Cauer I synthesis to make a LC low-pass filter from the Vout/Vin
@@ -180,6 +202,13 @@ def cauerI_synthesis_equal_inout_impedance(n,d,R=1.,reverse_polys=False):
     # Only works for just 1 in the numerator for now
     assert(len(n) == 1)
     assert(n[0] == 1.)
+
+
+    d_squared = polynomial_multiply(d,d)
+    K_squared_n = -np.array(d_squared)
+    K_squared_n[0] += 1.
+    K_squared_d = d_squared
+    breakpoint()
 
     driving_point_Z_n = np.array(d)
     driving_point_Z_d = np.array(d)
@@ -298,6 +327,7 @@ if __name__ == "__main__":
     z = polynomial_divide(x,[1,2,3])
     cf = polynomial_continued_fraction_decomp([0,24,0,30,0,9],[8,0,36,0,18])
     f = cauerI_synthesis_inf_in_impedance([1],[2,3,3,1])
+    f = cauerI_synthesis_equal_inout_impedance([1],[2,3,3,1])
     sys.exit()
 
     n = 3
