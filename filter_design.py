@@ -147,94 +147,51 @@ def semi_gaussian_complex_pole_locations(N,out_img_fn=None):
     """
     The poles are the complex roots of the equation:
 
-    0 = 1 - Sum_1^N s^{2*i}/i!
+    0 = Sum_1^N (-1)^i*s^{2*i}/i!
     """
 
     assert(N >= 2)
-    assert(N <= 5)
 
-    def eqn(s):
-        result = 1.+0j
-        for i in range(1,N+1):
-            result += (-1.)**i*s**(2*i)/special.factorial(i)
-        return result
-
-    a = np.linspace(-1.9,-0.9,200)
-    b = np.linspace(0.1,2,200)
-    av,bv = np.meshgrid(a,b)
-    cv = av+bv*1j
-    cf = eqn(cv)
-    mf = np.abs(cf)
-
-    agood = av[mf < 0.1]
-    bgood = bv[mf < 0.1]
-    obsgood = np.column_stack([agood,bgood])
-    centroids2, labels = cluster.vq.kmeans2(obsgood,N//2,minit="++")
-
-    if out_img_fn:
-        fig, ax = plt.subplots(constrained_layout=True)
-        pcm = ax.pcolormesh(av,bv,mf,shading="auto",norm=mcolors.LogNorm(vmax=10))
-        #ax.scatter(agood,bgood,marker='x',c='r')
-        ax.scatter(centroids2[:,0],centroids2[:,1],marker='x',c='m')
-        ax.set_xlabel("Re(s)")
-        ax.set_ylabel("Im(s)")
-        fig.colorbar(pcm)
-        fig.savefig(out_img_fn)
-    assert(len(centroids2) == N//2)
-
-    poles = np.zeros(int(np.ceil(N/2)),dtype="complex128")
-    for iPole in range(centroids2.shape[0]):
-        centroid = centroids2[iPole]
-        x0 = centroid[0]+centroid[1]*1j
-        x1 = x0 + 0.05+0.05j
-        solution = optimize.root_scalar(eqn,x0=x0,x1=x1,maxiter=200)
-        if not solution.converged:
-            raise Exception(f"Root finding did not converge {solution}")
-        poles[iPole] = solution.root
-
-    ## now have to find the real pole for odd N
-    if N % 2 == 1:
-        real_solution = optimize.root_scalar(lambda x: abs(eqn(x)),x0=-1.25,x1=-1.30)
-        if not real_solution.converged:
-            raise Exception(f"Real root finding did not converge {solution}")
-        poles[-1] = real_solution.root
-
-    ## Check poles aren't the same or on the right half plane
-    for iPole, pole in enumerate(poles):
-        if pole.real > 0.:
-            raise Exception(f"Found pole on the right half plane: {poles}")
-        for jPole in range(iPole+1,len(poles)):
-            if abs(pole-poles[jPole]) < 1e-6:
-                raise Exception(f"Found identical poles: {poles}")
-
+    poly_coefs = np.zeros(2*N+1)
+    for j in range(2*N+1):
+        i = j // 2
+        if j % 2 != 0:
+            continue
+        poly_coefs[j] = (-1.)**i/special.factorial(i)
+    poly = np.polynomial.Polynomial(poly_coefs)
+    poly_roots = poly.roots()
+    poles = poly_roots[poly_roots.real <= 0.]
     # normalize to a peak delay of 1 s
-    if N == 2:
-        poles *= 0.8657314629
-    elif N == 3:
-        poles *= 1.482965932
-    elif N == 4:
-        poles *= 1.955911824
-    elif N == 5:
-       poles *= 2.340681363
-    if N % 2 == 0:
-        poles = np.hstack([poles,poles.conj()])
-    else:
-        poles = np.hstack([poles[:-1],poles[:-1].conj(),poles[-1]])
+    #if N == 2:
+    #    poles *= 0.8657314629
+    #elif N == 3:
+    #    poles *= 1.482965932
+    #elif N == 4:
+    #    poles *= 1.955911824
+    #elif N == 5:
+    #   poles *= 2.340681363
 
     return poles
     
 
 def semi_gaussian_complex_all_pole_filter(N,out_img_fn=None):
     poles = semi_gaussian_complex_pole_locations(N)
-    f = signal.ZerosPolesGain([],poles,[1])
-    _, resp = f.freqresp([1e-9])
+    f1 = signal.ZerosPolesGain([],poles,[1])
+
+    ts, y_impulse = f1.impulse()
+    iMax_impulse = y_impulse.argmax()
+    poles_scale_factor = ts[iMax_impulse]
+    poles *= poles_scale_factor
+
+    f2 = signal.ZerosPolesGain([],poles,[1])
+    _, resp = f2.freqresp([1e-9])
     scale_factor = 1./abs(resp)
-    f = signal.ZerosPolesGain([],poles,scale_factor)
-    return f
+
+    f3 = signal.ZerosPolesGain([],poles,scale_factor)
+    return f3
 
 
 if __name__ == "__main__":
-    import sys
 
     alpha = -1
     n = 2
@@ -256,7 +213,7 @@ if __name__ == "__main__":
     p1 =-zeta1*w1 + 1j*w1*np.sqrt(1-zeta1**2)
     semi_gaussian_C3_filter = signal.ZerosPolesGain([],[p0,p1],[1])
 
-    for i in range(2,6):
+    for i in range(2,12):
         semi_gaussian_complex_pole_locations(i,f"GaussianPoleLocations_{i}.png")
 
     filters_to_plot = [
@@ -267,5 +224,10 @@ if __name__ == "__main__":
         (semi_gaussian_complex_all_pole_filter(3),"Semi-Gaussian C3 Filter"),
         (semi_gaussian_complex_all_pole_filter(4),"Semi-Gaussian C4 Filter"),
         (semi_gaussian_complex_all_pole_filter(5),"Semi-Gaussian C5 Filter"),
+        (semi_gaussian_complex_all_pole_filter(6),"Semi-Gaussian C6 Filter"),
+        (semi_gaussian_complex_all_pole_filter(7),"Semi-Gaussian C7 Filter"),
+        (semi_gaussian_complex_all_pole_filter(8),"Semi-Gaussian C8 Filter"),
+        (semi_gaussian_complex_all_pole_filter(9),"Semi-Gaussian C9 Filter"),
+        (semi_gaussian_complex_all_pole_filter(10),"Semi-Gaussian C10 Filter"),
     ]
-    plot_filters_behavior([x[0] for x in filters_to_plot],[x[1] for x in filters_to_plot],"Filter Design","Filter_Design.pdf",t_max=4)
+    plot_filters_behavior([x[0] for x in filters_to_plot],[x[1] for x in filters_to_plot],"Filter Design","Filter_Design.pdf",t_max=10)
