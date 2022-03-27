@@ -3,120 +3,8 @@
 from scipy import signal
 import matplotlib.pyplot as plt
 import numpy as np
+from numpy.polynomial import Polynomial
 from ladder_network_filter import LadderNetworkFilter
-
-def polynomial_array_strip_high_order_zeros(x,tol=1e-10):
-    while len(x) > 0:
-        if abs(x[-1]) > tol:
-            break
-        x = x[:-1]
-    return x
-
-def polynomial_multiply(x1,x2):
-    """
-    Performs polynomial multiplication
-
-    x1, x2: arrays of coefficients, where x[i] corresponds to the
-        coefficient of the s^i term
-
-    result is a similar array of coefficients to x1 and x2
-    """
-
-    x1 = np.array(x1,dtype="float64")
-    x2 = np.array(x2,dtype="float64")
-    # strip higher-order terms that are zero
-    x1 = polynomial_array_strip_high_order_zeros(x1)
-    x2 = polynomial_array_strip_high_order_zeros(x2)
-
-    if len(x1) == 0:
-        return x1
-    if len(x2) == 0:
-        return x2
-
-    len1 = len(x1)
-    len2 = len(x2)
-    order1 = len1-1
-    order2 = len2-1
-    order_res = order1+order2
-    len_res = order_res+1
-    tmp = np.zeros((len1,len_res),dtype="float64")
-    for shift1 in range(len1):
-        tmp[shift1,shift1:shift1+len2] = x1[shift1]*x2
-    result = tmp.sum(axis=0)
-    return result
-
-
-def polynomial_divide(n,d):
-    """
-    Performs polynomial division.
-
-    n: an array of numerator coefficients, where n[i] corresponds to the
-        coefficient of the s^i term
-
-    d: an array of denominator coefficients, where d[i] corresponds to the
-        coefficient of the s^i term
-
-    returns (q,rn) where q is the quotient array of coefficients, rn is the
-        remainder numerator (it can be divided by d to get the full remainder)
-    """
-
-    n = np.array(n,dtype="float64")
-    d = np.array(d,dtype="float64")
-    # strip higher-order terms that are zero
-    n = polynomial_array_strip_high_order_zeros(n)
-    d = polynomial_array_strip_high_order_zeros(d)
-    order_n = len(n)-1
-    order_d = len(d)-1
-    quotient_order = order_n-order_d
-    quotient_len = quotient_order+1
-    if quotient_len <= 0:
-        return np.zeros(1,dtype="float64"), n
-    quotient = np.zeros(quotient_len,dtype="float64")
-
-    remainder_n = np.array(n)
-    for iTerm in reversed(range(quotient_len)):
-        q_term, remainder_n = polynomial_divide_just_lead_term(remainder_n,d)
-        quotient[:iTerm+1] = q_term
-    return quotient, remainder_n
-
-
-
-def polynomial_divide_just_lead_term(n,d):
-    """
-    Performs part of polynomial division. The quotient is only the leading term
-        of the quotient, and the remainder is the remainder of that.
-
-    n: an array of numerator coefficients, where n[i] corresponds to the
-        coefficient of the s^i term
-
-    d: an array of denominator coefficients, where d[i] corresponds to the
-        coefficient of the s^i term
-
-    returns (q,rn) where q is the quotient array of coefficients, rn is the
-        remainder numerator (it can be divided by d to get the full remainder)
-    """
-
-    n = np.array(n,dtype="float64")
-    d = np.array(d,dtype="float64")
-    # strip higher-order terms that are zero
-    n = polynomial_array_strip_high_order_zeros(n)
-    d = polynomial_array_strip_high_order_zeros(d)
-    if len(n) < len(d):
-        return np.zeros(1,dtype="float64"), n
-
-    qscaler = n[-1]/d[-1]
-    qorder = len(n)-len(d)
-    q = np.zeros(qorder+1)
-    q[-1] = qscaler
-
-    # now multiply q * d and subtract from n to find the remainder
-    mult = np.zeros(len(d)+qorder)
-    mult[qorder:] = qscaler * d
-    rn = n-mult
-    # strip higher-order terms that are zero
-    q = polynomial_array_strip_high_order_zeros(q)
-    rn = polynomial_array_strip_high_order_zeros(rn)
-    return q, rn
 
 def polynomial_continued_fraction_decomp(n,d):
     """
@@ -134,9 +22,15 @@ def polynomial_continued_fraction_decomp(n,d):
         the coefficient of the s^i term.
     """
 
-    q, rn = polynomial_divide(n,d)
+    if not isinstance(n,Polynomial):
+        n = Polynomial(n)
+    if not isinstance(d,Polynomial):
+        d = Polynomial(d)
+    q, rn = divmod(n,d)
+    q = q.trim()
+    rn = rn.trim()
     result = [q]
-    if len(rn) == 0: # no remainder
+    if len(rn) == 0 or (len(rn) == 1 and rn.coef[0] < 1e-12): # no remainder
         return result
     else:
         return result + polynomial_continued_fraction_decomp(d,rn)
@@ -195,42 +89,41 @@ def cauerI_synthesis_equal_inout_impedance(n,d,R=1.,reverse_polys=False):
         n = np.flip(n)
         d = np.flip(d)
     # strip higher-order terms that are zero
-    n = polynomial_array_strip_high_order_zeros(n)
-    d = polynomial_array_strip_high_order_zeros(d)
+    n = Polynomial(n).trim()
+    d = Polynomial(d).trim()
     assert(len(n)<=len(d))
 
     # Only works for just 1 in the numerator for now
     assert(len(n) == 1)
-    assert(n[0] == 1.)
+    assert(n.coef[0] == 1.)
 
-
-    d_squared = polynomial_multiply(d,d)
-    K_squared_n = -np.array(d_squared)
-    K_squared_n[0] += 1.
+    d_squared = d**2
+    K_squared_n = -d_squared
+    K_squared_n.coef[0] += 1.
     K_squared_d = d_squared
-    breakpoint()
 
-    driving_point_Z_n = np.array(d)
-    driving_point_Z_d = np.array(d)
+    driving_point_Z_n = Polynomial(d.coef)
+    driving_point_Z_d = Polynomial(d.coef)
 
-    driving_point_Z_n[-1] -= 1.
-    driving_point_Z_d[-1] += 1.
+    driving_point_Z_n.coef[-1] -= 1.
+    driving_point_Z_d.coef[-1] += 1.
 
     cfd = polynomial_continued_fraction_decomp(driving_point_Z_n,driving_point_Z_d)
     cfd_y = polynomial_continued_fraction_decomp(driving_point_Z_d,driving_point_Z_n)
 
-    if len(cfd[0]) == 1 and abs(cfd[0][0]) < 1e-6:
+    if len(cfd[0]) == 1 and abs(cfd[0].coef[0]) < 1e-6:
         cfd.pop(0)
     else:
         raise Exception(f"First element of continued fraction should be [0], not: {cfd[0]}")
-    if len(cfd[-1]) == 1 and abs(cfd[-1][0]-1.) < 1e-6:
+    if len(cfd[-1]) == 1 and abs(cfd[-1].coef[0]-1.) < 1e-6:
         cfd.pop(-1)
     else:
         raise Exception(f"Last element of continued fraction should be [1], not: {cfd[-1]}")
     for x in cfd:
         assert(len(x) == 2)
+        assert(abs(x.coef[0]) < 1e-12)
 
-    cfd_s_coefs = np.array([x[1] for x in cfd],dtype="float64")
+    cfd_s_coefs = np.array([x.coef[1] for x in cfd],dtype="float64")
 
     C = cfd_s_coefs[::2]
     L = cfd_s_coefs[1::2]
@@ -276,17 +169,17 @@ def cauerI_synthesis_inf_in_impedance(n,d,R=1.,reverse_polys=False):
         n = np.flip(n)
         d = np.flip(d)
     # strip higher-order terms that are zero
-    n = polynomial_array_strip_high_order_zeros(n)
-    d = polynomial_array_strip_high_order_zeros(d)
+    n = Polynomial(n).trim()
+    d = Polynomial(d).trim()
     assert(len(n)<=len(d))
 
     # Only works for just 1 in the numerator for now
     assert(len(n) == 1)
-    assert(n[0] == 1.)
+    assert(n.coef[0] == 1.)
 
     range_mod_2 = np.arange(len(d)) % 2
-    d_evens = polynomial_array_strip_high_order_zeros(d * (range_mod_2 == 0))
-    d_odds = polynomial_array_strip_high_order_zeros(d * (range_mod_2 == 1))
+    d_evens = Polynomial(d.coef * (range_mod_2 == 0)).trim()
+    d_odds = Polynomial(d.coef * (range_mod_2 == 1)).trim()
     zfirst = len(d_evens) >= len(d_odds) # first component is impedance, otherwise is admittance (y)
 
     cfd = []
@@ -297,7 +190,7 @@ def cauerI_synthesis_inf_in_impedance(n,d,R=1.,reverse_polys=False):
 
     for x in cfd:
         assert(len(x) == 2)
-    cfd_s_coefs = np.array([x[1] for x in cfd],dtype="float64")
+    cfd_s_coefs = np.array([x.coef[1] for x in cfd],dtype="float64")
     term_is_z = (np.arange(len(cfd_s_coefs)) % 2)
     if zfirst:
         term_is_z = np.logical_not(term_is_z)
@@ -322,12 +215,10 @@ if __name__ == "__main__":
     from filter_design import semi_gaussian_complex_all_pole_filter, semi_gaussian_complex_pole_locations, plot_filters_behavior
     import sys
 
-    x = polynomial_multiply([1,2,3],[3,4])
-    y = polynomial_divide(x,[3,4])
-    z = polynomial_divide(x,[1,2,3])
     cf = polynomial_continued_fraction_decomp([0,24,0,30,0,9],[8,0,36,0,18])
     f = cauerI_synthesis_inf_in_impedance([1],[2,3,3,1])
     f = cauerI_synthesis_equal_inout_impedance([1],[2,3,3,1])
+    breakpoint()
     sys.exit()
 
     n = 3
