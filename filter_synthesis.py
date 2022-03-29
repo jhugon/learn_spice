@@ -65,26 +65,33 @@ def polynomial_complex_sqrt(p):
     tol = 1e-12
 
     p = p.trim()
+    p = Polynomial([(coef if abs(coef) > tol else 0.) for coef in p.coef])
     roots = p.roots()
+    roots = np.sort(roots)
     if len(roots) != p.degree():
         raise Exception(f"Found a different number of roots than expected. Roots: {roots} for polynomial: {p}")
-    roots = np.sort(roots)
-    roots_real_gt0 = roots[roots.real > 0]
-    roots_real_lt0 = roots[roots.real < 0]
-    assert(len(roots_real_gt0) == len(roots_real_lt0)) # assume real >0 roots are images of (good) neg roots
+    if np.all(roots < tol): # just zeros
+        new_degree = p.degree() // 2
+        new_coef = np.sqrt(abs(p.coef[-1]))
+        new_coefs = [0.]*new_degree + [new_coef]
+        result = Polynomial(new_coefs)
+    else:
+        roots_real_gt0 = roots[roots.real > 0]
+        roots_real_lt0 = roots[roots.real < 0]
+        assert(len(roots_real_gt0) == len(roots_real_lt0)) # assume real >0 roots are images of (good) neg roots
 
-    result_roots = np.array(roots_real_lt0)
-    for i in range(len(result_roots)):
-        if abs(result_roots[i].imag) < tol:
-            result_roots[i] = -abs(result_roots[i])
-    result_poly = Polynomial.fromroots(result_roots)
-    result_coef = result_poly.coef
-    for i in range(len(result_coef)):
-        if abs(result_coef[i].imag) < tol:
-            result_coef[i] = -abs(result_coef[i])
-    if abs(result_coef.imag).sum() < tol:
-        result_coef = result_coef.real
-    result = Polynomial(result_coef)
+        result_roots = np.array(roots_real_lt0)
+        for i in range(len(result_roots)):
+            if abs(result_roots[i].imag) < tol:
+                result_roots[i] = -abs(result_roots[i])
+        result_poly = Polynomial.fromroots(result_roots)
+        result_coef = result_poly.coef
+        for i in range(len(result_coef)):
+            if abs(result_coef[i].imag) < tol:
+                result_coef[i] = -abs(result_coef[i])
+        if abs(result_coef.imag).sum() < tol:
+            result_coef = result_coef.real
+        result = Polynomial(result_coef)
 
     result_conj = polynomial_conj(result)
     check_pos = result*result_conj
@@ -93,6 +100,7 @@ def polynomial_complex_sqrt(p):
     error_neg = abs(p.coef-check_neg.coef)
     if error_pos.sum() > tol and error_neg.sum() > tol:
         raise Exception(f"+/- result times it's conjugate doesn't match input: {p} result*conj(result): {check_pos} result: {result}")
+    breakpoint()
     return result
 
 def cauerI_synthesis_equal_inout_impedance(n,d,R=1.,reverse_polys=False):
@@ -119,6 +127,24 @@ def cauerI_synthesis_equal_inout_impedance(n,d,R=1.,reverse_polys=False):
         of inductances in H.
     """
 
+    tol = 1e-12
+
+    def only_linear_term_of_cfd(cfd):
+        """
+        returns array of linear term coefs and the final term's constant coef
+        """
+        result = np.zeros(len(cfd))
+        result_const = None
+        for iPoly, poly in enumerate(cfd):
+            if len(poly) != 2:
+                raise Exception(f"Term {poly} in cfd: {cfd} has the wrong order, should be just 1.")
+            if iPoly == len(cfd)-1:
+                result_const = poly.coef[0] if abs(poly.coef[0]) > tol else 0.
+            elif abs(poly.coef[0]) > tol:
+                raise Exception(f"Term {poly} in cfd: {cfd} has a large constant coefficient")
+            result[iPoly] = poly.coef[1]
+        return result, result_const
+
     n = np.array(n,dtype="float64")
     d = np.array(d,dtype="float64")
     if reverse_polys:
@@ -137,42 +163,34 @@ def cauerI_synthesis_equal_inout_impedance(n,d,R=1.,reverse_polys=False):
     Gamma_n = n*polynomial_conj(n)
     Gamma_d = d*polynomial_conj(d)
 
-    # 1 - Gamma
-    S_squared_n = Gamma_d - Gamma_n
-    S_squared_d = Gamma_d
+    S_squared_n = -Gamma_d - Gamma_n
+    S_squared_d = -Gamma_d
 
     # Now need to find S, where S times conj(S) = S_squared
     # Make sure to use +/- S
     S_n = polynomial_complex_sqrt(S_squared_n)
     S_d = polynomial_complex_sqrt(S_squared_d)
 
-    d_squared = d**2
-    K_squared_n = -d_squared
-    K_squared_n.coef[0] += 1.
-    K_squared_d = d_squared
+    # Driving point Z = (1+S)/(1-S)
+    # That may be specifically for 1 ohm in/out impedance
+    driving_point_Z_n_plus = S_d + S_n
+    driving_point_Z_d_plus = S_d - S_n
+    ## Use both + and - solution of polynomial_complex_sqrt
+    driving_point_Z_n_minus = -S_d - S_n
+    driving_point_Z_d_minus = -S_d + S_n
 
-    driving_point_Z_n = Polynomial(d.coef)
-    driving_point_Z_d = Polynomial(d.coef)
+    print(driving_point_Z_n_plus)
+    print(driving_point_Z_d_plus)
+    print(driving_point_Z_n_minus)
+    print(driving_point_Z_d_minus)
 
-    driving_point_Z_n.coef[-1] -= 1.
-    driving_point_Z_d.coef[-1] += 1.
+    cfd_plus = polynomial_continued_fraction_decomp(driving_point_Z_n_plus,driving_point_Z_d_plus)
+    cfd_minus = polynomial_continued_fraction_decomp(driving_point_Z_n_minus,driving_point_Z_d_minus)
 
-    cfd = polynomial_continued_fraction_decomp(driving_point_Z_n,driving_point_Z_d)
-    cfd_y = polynomial_continued_fraction_decomp(driving_point_Z_d,driving_point_Z_n)
+    s_coefs_plus, const_coef_plus = only_linear_term_of_cfd(cfd_plus)
+    s_coefs_minus, const_coef_minus = only_linear_term_of_cfd(cfd_minus)
 
-    if len(cfd[0]) == 1 and abs(cfd[0].coef[0]) < 1e-6:
-        cfd.pop(0)
-    else:
-        raise Exception(f"First element of continued fraction should be [0], not: {cfd[0]}")
-    if len(cfd[-1]) == 1 and abs(cfd[-1].coef[0]-1.) < 1e-6:
-        cfd.pop(-1)
-    else:
-        raise Exception(f"Last element of continued fraction should be [1], not: {cfd[-1]}")
-    for x in cfd:
-        assert(len(x) == 2)
-        assert(abs(x.coef[0]) < 1e-12)
-
-    cfd_s_coefs = np.array([x.coef[1] for x in cfd],dtype="float64")
+    breakpoint()
 
     C = cfd_s_coefs[::2]
     L = cfd_s_coefs[1::2]
