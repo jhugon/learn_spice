@@ -35,27 +35,65 @@ def polynomial_continued_fraction_decomp(n,d):
     else:
         return result + polynomial_continued_fraction_decomp(d,rn)
 
-def polynomial_sqrt(x):
+def polynomial_conj(p):
     """
-    Performs polynomial square root.
+    Assumes polynomial variable, s, is complex
 
-    x: an array of numerator coefficients, where n[i] corresponds to the
-        coefficient of the s^i term
+    Input polynomial is an instance of np.polynomial.Polynomial
+
+    returns an instance of np.polynomial.Polynomial
+    """
+    assert(isinstance(p,Polynomial))
+    roots = p.roots()
+    if p.degree() == 0:
+        return p
+    result = Polynomial.fromroots(-roots)
+    return result
+
+def polynomial_complex_sqrt(p):
+    """
+    Performs something like a polynomial square root.
+    Finds f such that f times conj(f) = p
+
+    Keep in mind -result is also a solution
+
+    p: an instance of np.polynomial.Polynomial
+
+    returns an instance of np.polynomial.Polynomial
     """
 
-    x = np.array(x,dtype="complex128")
-    # strip higher-order terms that are zero
-    x = polynomial_array_strip_high_order_zeros(x)
-    len_x = len(x)
-    order_x = len_x -1
-    if order_x % 2 == 1:
-        raise ValueError(f"Polynomial must have even order: {x}")
-    result_order = int(order_x/2)
-    assert(result_order*2 == order_x)
-    result_len = result_order+1
-    result = np.zeros(result_len,dtype="complex128")
-    result[-1] = np.sqrt(x[-1])
-        
+    tol = 1e-12
+
+    p = p.trim()
+    roots = p.roots()
+    if len(roots) != p.degree():
+        raise Exception(f"Found a different number of roots than expected. Roots: {roots} for polynomial: {p}")
+    roots = np.sort(roots)
+    roots_real_gt0 = roots[roots.real > 0]
+    roots_real_lt0 = roots[roots.real < 0]
+    assert(len(roots_real_gt0) == len(roots_real_lt0)) # assume real >0 roots are images of (good) neg roots
+
+    result_roots = np.array(roots_real_lt0)
+    for i in range(len(result_roots)):
+        if abs(result_roots[i].imag) < tol:
+            result_roots[i] = -abs(result_roots[i])
+    result_poly = Polynomial.fromroots(result_roots)
+    result_coef = result_poly.coef
+    for i in range(len(result_coef)):
+        if abs(result_coef[i].imag) < tol:
+            result_coef[i] = -abs(result_coef[i])
+    if abs(result_coef.imag).sum() < tol:
+        result_coef = result_coef.real
+    result = Polynomial(result_coef)
+
+    result_conj = polynomial_conj(result)
+    check_pos = result*result_conj
+    check_neg = -result*result_conj
+    error_pos = abs(p.coef-check_pos.coef)
+    error_neg = abs(p.coef-check_neg.coef)
+    if error_pos.sum() > tol and error_neg.sum() > tol:
+        raise Exception(f"+/- result times it's conjugate doesn't match input: {p} result*conj(result): {check_pos} result: {result}")
+    return result
 
 def cauerI_synthesis_equal_inout_impedance(n,d,R=1.,reverse_polys=False):
     """
@@ -63,11 +101,9 @@ def cauerI_synthesis_equal_inout_impedance(n,d,R=1.,reverse_polys=False):
         transfer function given by the numerator, n, and denominator, d, polynomials.
         Constructs the ladder shunt (capacitor) first.
 
-    Williams, A. Analog Filter and Circuit Design Handbook. McGraw Hill (2013).
-        ISBN-13: 978-0071816717
-        Section 1.2.1
-
-    Assumes the numerator is just [1]
+    Youla, Dante C. Theory and Synthesis of Linear Passive Time-Invariant
+        Networks. Cambridge University Press, 2015. 
+        DOI: https://doi.org/10.1017/CBO9781316403105
 
     n: an array of numerator coefficients, where n[i] corresponds to the
         coefficient of the s^i term. If reverse_polys is True, then the
@@ -96,6 +132,19 @@ def cauerI_synthesis_equal_inout_impedance(n,d,R=1.,reverse_polys=False):
     # Only works for just 1 in the numerator for now
     assert(len(n) == 1)
     assert(n.coef[0] == 1.)
+
+    # power transfer function
+    Gamma_n = n*polynomial_conj(n)
+    Gamma_d = d*polynomial_conj(d)
+
+    # 1 - Gamma
+    S_squared_n = Gamma_d - Gamma_n
+    S_squared_d = Gamma_d
+
+    # Now need to find S, where S times conj(S) = S_squared
+    # Make sure to use +/- S
+    S_n = polynomial_complex_sqrt(S_squared_n)
+    S_d = polynomial_complex_sqrt(S_squared_d)
 
     d_squared = d**2
     K_squared_n = -d_squared
@@ -215,9 +264,9 @@ if __name__ == "__main__":
     from filter_design import semi_gaussian_complex_all_pole_filter, semi_gaussian_complex_pole_locations, plot_filters_behavior
     import sys
 
-    cf = polynomial_continued_fraction_decomp([0,24,0,30,0,9],[8,0,36,0,18])
-    f = cauerI_synthesis_inf_in_impedance([1],[2,3,3,1])
-    f = cauerI_synthesis_equal_inout_impedance([1],[2,3,3,1])
+    g = cauerI_synthesis_equal_inout_impedance([1],[1,2,2,1]) # 3rd order butter
+    f = cauerI_synthesis_equal_inout_impedance([1],semi_gaussian_complex_all_pole_filter(3).to_tf().den)
+    #h = cauerI_synthesis_equal_inout_impedance([1],[2,3,3,1])
     breakpoint()
     sys.exit()
 
