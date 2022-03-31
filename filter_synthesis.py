@@ -30,7 +30,7 @@ def polynomial_continued_fraction_decomp(n,d):
     q = q.trim()
     rn = rn.trim()
     result = [q]
-    if len(rn) == 0 or (len(rn) == 1 and rn.coef[0] < 1e-12): # no remainder
+    if len(rn) == 0 or (len(rn) == 1 and abs(rn.coef[0]) < 1e-12): # no remainder
         return result
     else:
         return result + polynomial_continued_fraction_decomp(d,rn)
@@ -100,7 +100,6 @@ def polynomial_complex_sqrt(p):
     error_neg = abs(p.coef-check_neg.coef)
     if error_pos.sum() > tol and error_neg.sum() > tol:
         raise Exception(f"+/- result times it's conjugate doesn't match input: {p} result*conj(result): {check_pos} result: {result}")
-    breakpoint()
     return result
 
 def cauerI_synthesis_equal_inout_impedance(n,d,R=1.,reverse_polys=False):
@@ -136,6 +135,12 @@ def cauerI_synthesis_equal_inout_impedance(n,d,R=1.,reverse_polys=False):
         result = np.zeros(len(cfd))
         result_const = None
         for iPoly, poly in enumerate(cfd):
+            if len(poly) == 1:
+                if abs(poly.coef[0]) < tol:
+                    result[iPoly] = 0.
+                    continue
+                else:
+                    raise Exception(f"Term {poly} in cfd: {cfd} is order 0 and the constant isn't zero.")
             if len(poly) != 2:
                 raise Exception(f"Term {poly} in cfd: {cfd} has the wrong order, should be just 1.")
             if iPoly == len(cfd)-1:
@@ -176,13 +181,8 @@ def cauerI_synthesis_equal_inout_impedance(n,d,R=1.,reverse_polys=False):
     driving_point_Z_n_plus = S_d + S_n
     driving_point_Z_d_plus = S_d - S_n
     ## Use both + and - solution of polynomial_complex_sqrt
-    driving_point_Z_n_minus = -S_d - S_n
-    driving_point_Z_d_minus = -S_d + S_n
-
-    print(driving_point_Z_n_plus)
-    print(driving_point_Z_d_plus)
-    print(driving_point_Z_n_minus)
-    print(driving_point_Z_d_minus)
+    driving_point_Z_n_minus = S_d - S_n
+    driving_point_Z_d_minus = S_d + S_n
 
     cfd_plus = polynomial_continued_fraction_decomp(driving_point_Z_n_plus,driving_point_Z_d_plus)
     cfd_minus = polynomial_continued_fraction_decomp(driving_point_Z_n_minus,driving_point_Z_d_minus)
@@ -190,15 +190,37 @@ def cauerI_synthesis_equal_inout_impedance(n,d,R=1.,reverse_polys=False):
     s_coefs_plus, const_coef_plus = only_linear_term_of_cfd(cfd_plus)
     s_coefs_minus, const_coef_minus = only_linear_term_of_cfd(cfd_minus)
 
-    breakpoint()
+    Rload_plus = const_coef_plus
+    Rload_minus = const_coef_minus
 
-    C = cfd_s_coefs[::2]
-    L = cfd_s_coefs[1::2]
-    C /= R
-    L *= R
+    C_plus = s_coefs_plus[1::2]
+    L_plus = s_coefs_plus[::2]
+    C_plus /= Rload_plus
+    L_plus *= Rload_plus
 
-    lnf = LadderNetworkFilter(C,L,Rin=R,Rout=R,shunt_first=True)
-    return lnf
+    C_minus = s_coefs_minus[1::2]
+    L_minus = s_coefs_minus[::2]
+    C_minus /= Rload_minus
+    L_minus *= Rload_minus
+
+    ## Shunt first if L[0] < tol, so get rid of it
+    shunt_first_plus = False
+    if L_plus[0] < tol:
+        L_plus = L_plus[1:]
+        shunt_first_plus = True
+    shunt_first_minus = False
+    if L_minus[0] < tol:
+        L_minus = L_minus[1:]
+        shunt_first_minus = True
+
+    if shunt_first_plus:
+        lnf = LadderNetworkFilter(C_plus,L_plus,Rin=Rload_plus,Rout=Rload_plus,shunt_first=True)
+        return lnf
+    elif shunt_first_minus:
+        lnf = LadderNetworkFilter(C_minus,L_minus,Rin=Rload_minus,Rout=Rload_minus,shunt_first=True)
+        return lnf
+    else:
+        raise Exception(f"Both ladder networks are series first and that's not implemented")
 
 
 def cauerI_synthesis_inf_in_impedance(n,d,R=1.,reverse_polys=False):
@@ -283,6 +305,7 @@ if __name__ == "__main__":
     import sys
 
     g = cauerI_synthesis_equal_inout_impedance([1],[1,2,2,1]) # 3rd order butter
+    breakpoint()
     f = cauerI_synthesis_equal_inout_impedance([1],semi_gaussian_complex_all_pole_filter(3).to_tf().den)
     #h = cauerI_synthesis_equal_inout_impedance([1],[2,3,3,1])
     breakpoint()
