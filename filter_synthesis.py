@@ -196,6 +196,15 @@ def cauerI_synthesis_equal_inout_impedance(n,d,R=1.,reverse_polys=False):
     s_coefs_plus, const_coef_plus = only_linear_term_of_cfd(cfd_plus)
     s_coefs_minus, const_coef_minus = only_linear_term_of_cfd(cfd_minus)
 
+    if np.any(s_coefs_plus < 0.):
+        raise Exception(f"Continued Fraction + has negative terms (corresponding to negative impedances): {s_coefs_plus}. Can't synth.")
+    if np.any(s_coefs_minus < 0.):
+        raise Exception(f"Continued Fraction - has negative terms (corresponding to negative impedances): {s_coefs_minus}. Can't synth.")
+    if const_coef_plus < 0.:
+        raise Exception(f"Continued Fraction + final constant is negative (corresponding to negative impedance): {const_coef_plus}. Can't synth.")
+    if const_coef_minus < 0.:
+        raise Exception(f"Continued Fraction - final constant is negative (corresponding to negative impedance): {const_coef_minus}. Can't synth.")
+
     Rload_plus = const_coef_plus
     Rload_minus = const_coef_minus
 
@@ -316,8 +325,13 @@ if __name__ == "__main__":
     butter_filters = []
     for i in range(min_order,max_order+1):
         n, d = signal.butter(i,1,btype="lowpass",analog=True,output="ba")
-        ladder_filter = cauerI_synthesis_equal_inout_impedance(n,d,reverse_polys=True)
-        butter_filters.append(ladder_filter)
+        try:
+            ladder_filter = cauerI_synthesis_equal_inout_impedance(n,d,reverse_polys=True)
+        except Exception as e:
+            print(f"Error while syth Butter {i}O: {e}")
+            butter_filters.append(None)
+        else:
+            butter_filters.append(ladder_filter)
     butter_titles = ["Butterworth {}O".format(i) for i in range(min_order,max_order+1)]
     for i in range(max_order-min_order+1):
         print(f"{butter_titles[i]}: {butter_filters[i]}")
