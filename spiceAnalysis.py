@@ -521,13 +521,41 @@ class SpiceAnalyzer(object):
     fig.savefig(savename)
 
     for label,tImpulse,vImpulse,tStep,vStep in zip(labelList,tImpulseList,vImpulseList,tStepList,vStepList):
-        max_impulse = vImpulse[0].max()
-        iMax_impulse = vImpulse[0].argmax()
-        max_step = vStep[0].max()
-        t10pct_step = tStep[0][vStep[0] >= max_step*0.1][0]
-        t90pct_step = tStep[0][vStep[0] >= max_step*0.9][0]
-        t100pct_impulse = tImpulse[0][vImpulse[0] == max_impulse][0]
-        t10pct_impulse = tImpulse[0][iMax_impulse:][vImpulse[0][iMax_impulse:] <= max_impulse*0.1][0]
+        max_impulse = float('nan')
+        iMax_impulse = float('nan')
+        max_step = float('nan')
+        t10pct_step = float('nan')
+        t90pct_step = float('nan')
+        t100pct_impulse = float('nan')
+        t10pct_impulse = float('nan')
+        try:
+            max_impulse = vImpulse[0].max()
+        except IndexError:
+            pass
+        try:
+            iMax_impulse = vImpulse[0].argmax()
+        except IndexError:
+            pass
+        try:
+            max_step = vStep[0].max()
+        except IndexError:
+            pass
+        try:
+            t10pct_step = tStep[0][vStep[0] >= max_step*0.1][0]
+        except IndexError:
+            pass
+        try:
+            t90pct_step = tStep[0][vStep[0] >= max_step*0.9][0]
+        except IndexError:
+            pass
+        try:
+            t100pct_impulse = tImpulse[0][vImpulse[0] == max_impulse][0]
+        except IndexError:
+            pass
+        try:
+            t10pct_impulse = tImpulse[0][iMax_impulse:][vImpulse[0][iMax_impulse:] <= max_impulse*0.1][0]
+        except IndexError:
+            pass
         print(f"{label:50} impulse 0-100%: {t100pct_impulse:5.2f} 100-10%: {t10pct_impulse-t100pct_impulse:5.2f} max: {max_impulse:4.2f} step 10-90%: {t90pct_step-t10pct_step:5.2f} max: {max_step:4.2f}")
 
 

@@ -310,29 +310,39 @@ if __name__ == "__main__":
     from filter_design import semi_gaussian_complex_all_pole_filter, semi_gaussian_complex_pole_locations, plot_filters_behavior
     import sys
 
+    min_order = 2
+    max_order = 5
+
     butter_filters = []
-    for i in range(2,6):
+    for i in range(min_order,max_order+1):
         n, d = signal.butter(i,1,btype="lowpass",analog=True,output="ba")
         ladder_filter = cauerI_synthesis_equal_inout_impedance(n,d,reverse_polys=True)
         butter_filters.append(ladder_filter)
+    butter_titles = ["Butterworth {}O".format(i) for i in range(min_order,max_order+1)]
+    for i in range(max_order-min_order+1):
+        print(f"{butter_titles[i]}: {butter_filters[i]}")
+    LadderNetworkFilter.make_plots_many_filters(butter_filters,butter_titles,"Synth_Butterworth.pdf","Cauer I LC Butterworth Filters",1e-3,1e3,1e-3,0,5)
+    sys.exit()
 
     bessel_filters = []
-    for i in range(2,6):
+    for i in range(min_order,max_order+1):
         n, d = signal.bessel(i,1,btype="lowpass",analog=True,output="ba")
         ladder_filter = cauerI_synthesis_equal_inout_impedance(n,d,reverse_polys=True)
         bessel_filters.append(ladder_filter)
-    bessel_titles = ["Bessel {}O".format(i) for i in range(2,6)]
-    #LadderNetworkFilter.make_plots_many_filters(bessel_filters,bessel_titles,"Bessel_Filters.pdf","Cauer I LC Bessel Filters",1e-3,1e3,1e-3,0,5)
+    bessel_titles = ["Bessel {}O".format(i) for i in range(min_order,max_order+1)]
+    for i in range(max_order-min_order+1):
+        print(f"{bessel_titles[i]}: {bessel_filters[i]}")
+    LadderNetworkFilter.make_plots_many_filters(bessel_filters,bessel_titles,"Synth_Bessel.pdf","Cauer I LC Bessel Filters",1e-3,1e3,1e-3,0,5)
     
     semi_gaus_filters = []
-    semi_gaus_titles = ["Semi-Gaus {}O".format(i) for i in range(3,6)]
-    for i in range(2,6):
-        n, d = semi_gaussian_complex_all_pole_filter(i)
-        poles = semi_gaussian_complex_pole_locations(i)/(i-2)/4
-        zpg = signal.ZerosPolesGain([],poles,[1])
+    semi_gaus_titles = ["Semi-Gaus {}O".format(i) for i in range(min_order,max_order+1)]
+    for i in range(min_order,max_order+1):
+        zpg = semi_gaussian_complex_all_pole_filter(i)
         tf = zpg.to_tf()
         ladder_filter = cauerI_synthesis_equal_inout_impedance(tf.num,tf.den,reverse_polys=True)
         semi_gaus_filters.append(ladder_filter)
+    for i in range(max_order-min_order+1):
+        print(f"{semi_gaus_titles[i]}: {semi_gaus_filters[i]}")
     LadderNetworkFilter.make_plots_many_filters(semi_gaus_filters,semi_gaus_titles,"Synth_Semi_Gaus.pdf","Cauer I LC Filters",1e-3,1e3,1e-3,0,7)
 
     LadderNetworkFilter.make_plots_many_filters([bessel_filters[1],semi_gaus_filters[0]],[bessel_titles[1],semi_gaus_titles[0]],"Synth_Comparison.pdf","3rd Order LC Filter Comparison",1e-3,1e3,1e-3,0,7)
