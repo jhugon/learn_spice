@@ -170,7 +170,6 @@ def semi_gaussian_complex_pole_locations(N,out_img_fn=None):
     #    poles *= 1.955911824
     #elif N == 5:
     #   poles *= 2.340681363
-
     return poles
     
 
@@ -178,17 +177,18 @@ def semi_gaussian_complex_all_pole_filter(N,out_img_fn=None):
     poles = semi_gaussian_complex_pole_locations(N)
     f1 = signal.ZerosPolesGain([],poles,[1])
 
-    ts, y_impulse = f1.impulse()
-    iMax_impulse = y_impulse.argmax()
-    poles_scale_factor = ts[iMax_impulse]
-    poles *= poles_scale_factor
-
-    f2 = signal.ZerosPolesGain([],poles,[1])
-    _, resp = f2.freqresp([1e-9])
-    scale_factor = 1./abs(resp)
-
-    f3 = signal.ZerosPolesGain([],poles,scale_factor)
-    return f3
+    return f1
+#    ts, y_impulse = f1.impulse()
+#    iMax_impulse = y_impulse.argmax()
+#    poles_scale_factor = ts[iMax_impulse]
+#    poles *= poles_scale_factor
+#
+#    f2 = signal.ZerosPolesGain([],poles,[1])
+#    _, resp = f2.freqresp([1e-9])
+#    scale_factor = 1./abs(resp)
+#
+#    f3 = signal.ZerosPolesGain([],poles,scale_factor)
+#    return f3
 
 
 if __name__ == "__main__":

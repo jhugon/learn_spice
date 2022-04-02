@@ -62,7 +62,7 @@ def polynomial_complex_sqrt(p):
     returns an instance of np.polynomial.Polynomial
     """
 
-    tol = 1e-12
+    tol = 1e-10
 
     p = p.trim()
     p = Polynomial([(coef if abs(coef) > tol else 0.) for coef in p.coef])
@@ -70,20 +70,23 @@ def polynomial_complex_sqrt(p):
     roots = np.sort(roots)
     if len(roots) != p.degree():
         raise Exception(f"Found a different number of roots than expected. Roots: {roots} for polynomial: {p}")
-    if np.all(roots < tol): # just zeros
+    if np.all(abs(roots) < tol): # just zeros
         new_degree = p.degree() // 2
         new_coef = np.sqrt(abs(p.coef[-1]))
         new_coefs = [0.]*new_degree + [new_coef]
         result = Polynomial(new_coefs)
     else:
-        roots_real_gt0 = roots[roots.real > 0]
-        roots_real_lt0 = roots[roots.real < 0]
+        n_roots_zero = len(roots[abs(roots) < tol])
+        roots_nonzero = roots[abs(roots) >= tol]
+        roots_real_gt0 = roots_nonzero[roots_nonzero.real > 0]
+        roots_real_lt0 = roots_nonzero[roots_nonzero.real < 0]
         assert(len(roots_real_gt0) == len(roots_real_lt0)) # assume real >0 roots are images of (good) neg roots
-
-        result_roots = np.array(roots_real_lt0)
-        for i in range(len(result_roots)):
-            if abs(result_roots[i].imag) < tol:
-                result_roots[i] = -abs(result_roots[i])
+        for i in range(len(roots_real_lt0)):
+            if abs(roots_real_lt0[i].imag) < tol:
+                roots_real_lt0[i] = -abs(roots_real_lt0[i])
+        assert(n_roots_zero % 2 == 0) # must have even zero roots
+        result_roots = np.zeros(n_roots_zero // 2 + len(roots_real_lt0),dtype="complex128")
+        result_roots[n_roots_zero // 2:] = roots_real_lt0
         result_poly = Polynomial.fromroots(result_roots)
         result_coef = result_poly.coef
         for i in range(len(result_coef)):
@@ -96,8 +99,11 @@ def polynomial_complex_sqrt(p):
     result_conj = polynomial_conj(result)
     check_pos = result*result_conj
     check_neg = -result*result_conj
-    error_pos = abs(p.coef-check_pos.coef)
-    error_neg = abs(p.coef-check_neg.coef)
+    try:
+        error_pos = abs(p.coef-check_pos.coef)
+        error_neg = abs(p.coef-check_neg.coef)
+    except Exception:
+        breakpoint()
     if error_pos.sum() > tol and error_neg.sum() > tol:
         raise Exception(f"+/- result times it's conjugate doesn't match input: {p} result*conj(result): {check_pos} result: {result}")
     return result
@@ -126,7 +132,7 @@ def cauerI_synthesis_equal_inout_impedance(n,d,R=1.,reverse_polys=False):
         of inductances in H.
     """
 
-    tol = 1e-12
+    tol = 1e-6
 
     def only_linear_term_of_cfd(cfd):
         """
@@ -304,65 +310,29 @@ if __name__ == "__main__":
     from filter_design import semi_gaussian_complex_all_pole_filter, semi_gaussian_complex_pole_locations, plot_filters_behavior
     import sys
 
-    g = cauerI_synthesis_equal_inout_impedance([1],[1,2,2,1]) # 3rd order butter
-    breakpoint()
-    f = cauerI_synthesis_equal_inout_impedance([1],semi_gaussian_complex_all_pole_filter(3).to_tf().den)
-    #h = cauerI_synthesis_equal_inout_impedance([1],[2,3,3,1])
-    breakpoint()
-    sys.exit()
-
-    n = 3
-    print(signal.butter(n,1,btype="lowpass",analog=True,output="ba"))
-    print(signal.bessel(n,1,btype="lowpass",analog=True,output="ba"))
-    print(signal.cheby1(n,0.1,1,btype="lowpass",analog=True,output="ba"))
-    print(signal.cheby2(n,10,1,btype="lowpass",analog=True,output="ba"))
-
-
-    # 2nd order 0.1dB Chebyshev
-    zpg = signal.ZerosPolesGain([],[-0.6743+0.7075j,-0.6743-0.7075j],[1])
-    print(zpg)
-    tf = zpg.to_tf()
-    print(tf)
-    ladder_filter = cauerI_synthesis_equal_inout_impedance(tf.num,tf.den,reverse_polys=True)
-    print(ladder_filter)
-
-    def get_butterworth(n):
-        return signal.butter(n,1,btype="lowpass",analog=True,output="ba")
-    def get_bessel(n):
-        return signal.bessel(n,1,btype="lowpass",analog=True,output="ba")
-
-    sys.exit(1)
-
-    for i in range(2,8):
-        ladder_filter = cauerI_synthesis_equal_inout_impedance(*get_bessel(i),reverse_polys=True)
-        print(ladder_filter)
-
-    real_pole_filter2 = cauerI_synthesis([1],[1,2,1])
-    real_pole_filter3 = cauerI_synthesis([1],[8,12,6,1])
-    real_pole_filter4 = cauerI_synthesis([1],[81,108,54,12,1])
-    LadderNetworkFilter.make_plots_many_filters([real_pole_filter2,real_pole_filter3,real_pole_filter4],[r"$\frac{1}{(s+1)^2}$",r"$\frac{1}{(s+2)^3}$",r"$\frac{1}{(s+3)^4}$"],"Real_Pole_Filters.pdf","Cauer I LC Filters",1e-3,1e3,1e-3,0,5)
+    butter_filters = []
+    for i in range(2,6):
+        n, d = signal.butter(i,1,btype="lowpass",analog=True,output="ba")
+        ladder_filter = cauerI_synthesis_equal_inout_impedance(n,d,reverse_polys=True)
+        butter_filters.append(ladder_filter)
 
     bessel_filters = []
-    for i in range(2,10):
+    for i in range(2,6):
         n, d = signal.bessel(i,1,btype="lowpass",analog=True,output="ba")
-        #p, z, k = signal.tf2zpk(n,d)
-        #p /= i-1
-        #z /= i-1
-        #n, d = signal.zpk2tf(p,z,k)
-        ladder_filter = cauerI_synthesis(n,d)
-        print(ladder_filter)
+        ladder_filter = cauerI_synthesis_equal_inout_impedance(n,d,reverse_polys=True)
         bessel_filters.append(ladder_filter)
-    bessel_titles = ["Bessel {}O".format(i) for i in range(2,10)]
-    LadderNetworkFilter.make_plots_many_filters(bessel_filters,bessel_titles,"Bessel_Filters.pdf","Cauer I LC Bessel Filters",1e-3,1e3,1e-3,0,5)
+    bessel_titles = ["Bessel {}O".format(i) for i in range(2,6)]
+    #LadderNetworkFilter.make_plots_many_filters(bessel_filters,bessel_titles,"Bessel_Filters.pdf","Cauer I LC Bessel Filters",1e-3,1e3,1e-3,0,5)
     
     semi_gaus_filters = []
     semi_gaus_titles = ["Semi-Gaus {}O".format(i) for i in range(3,6)]
-    for i in range(3,6):
+    for i in range(2,6):
+        n, d = semi_gaussian_complex_all_pole_filter(i)
         poles = semi_gaussian_complex_pole_locations(i)/(i-2)/4
         zpg = signal.ZerosPolesGain([],poles,[1])
         tf = zpg.to_tf()
-        ladder_filter = cauerI_synthesis(tf.num,tf.den)
+        ladder_filter = cauerI_synthesis_equal_inout_impedance(tf.num,tf.den,reverse_polys=True)
         semi_gaus_filters.append(ladder_filter)
     LadderNetworkFilter.make_plots_many_filters(semi_gaus_filters,semi_gaus_titles,"Synth_Semi_Gaus.pdf","Cauer I LC Filters",1e-3,1e3,1e-3,0,7)
 
-    LadderNetworkFilter.make_plots_many_filters([bessel_filters[1],semi_gaus_filters[0],real_pole_filter3],[bessel_titles[1],semi_gaus_titles[0],r"$\frac{1}{(s+2)^3}$"],"Synth_Comparison.pdf","3rd Order LC Filter Comparison",1e-3,1e3,1e-3,0,7)
+    LadderNetworkFilter.make_plots_many_filters([bessel_filters[1],semi_gaus_filters[0]],[bessel_titles[1],semi_gaus_titles[0]],"Synth_Comparison.pdf","3rd Order LC Filter Comparison",1e-3,1e3,1e-3,0,7)

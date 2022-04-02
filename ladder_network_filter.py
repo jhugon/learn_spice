@@ -53,6 +53,11 @@ class LadderNetworkFilter:
         result = "LadderNetworkFilter(C={},L={},Rin={},Rout={},shunt_first={})".format(self.Clist,self.Llist,self.Rin,self.Rout,self.shunt_first)
         return result
 
+    def __repr__(self):
+        result = "LadderNetworkFilter({},{},Rin={},Rout={},shunt_first={})".format(self.Clist,self.Llist,self.Rin,self.Rout,self.shunt_first)
+        return result
+
+
     def _generate_ladder_string(self):
         Clist = self.Clist
         Llist = self.Llist
