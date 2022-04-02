@@ -217,17 +217,22 @@ if __name__ == "__main__":
         semi_gaussian_complex_pole_locations(i,f"GaussianPoleLocations_{i}.png")
 
     filters_to_plot = [
-        (real_all_pole_filter,"Real All-Pole Filter"),
-        (complex_pole_filter,"Complex Pole Filter"),
-        (semi_gaussian_C3_filter,"Semi-Gaussian C3 Filter (from paper)"),
-        (semi_gaussian_complex_all_pole_filter(2),"Semi-Gaussian C2 Filter"),
-        (semi_gaussian_complex_all_pole_filter(3),"Semi-Gaussian C3 Filter"),
-        (semi_gaussian_complex_all_pole_filter(4),"Semi-Gaussian C4 Filter"),
-        (semi_gaussian_complex_all_pole_filter(5),"Semi-Gaussian C5 Filter"),
-        (semi_gaussian_complex_all_pole_filter(6),"Semi-Gaussian C6 Filter"),
-        (semi_gaussian_complex_all_pole_filter(7),"Semi-Gaussian C7 Filter"),
-        (semi_gaussian_complex_all_pole_filter(8),"Semi-Gaussian C8 Filter"),
-        (semi_gaussian_complex_all_pole_filter(9),"Semi-Gaussian C9 Filter"),
-        (semi_gaussian_complex_all_pole_filter(10),"Semi-Gaussian C10 Filter"),
+        #(real_all_pole_filter,"Real All-Pole Filter"),
+        #(complex_pole_filter,"Complex Pole Filter"),
+        #(semi_gaussian_C3_filter,"Semi-Gaussian C3 Filter (from paper)"),
+        #(semi_gaussian_complex_all_pole_filter(2),"Semi-Gaussian C2 Filter"),
+        #(semi_gaussian_complex_all_pole_filter(3),"Semi-Gaussian C3 Filter"),
+        #(semi_gaussian_complex_all_pole_filter(4),"Semi-Gaussian C4 Filter"),
+        #(semi_gaussian_complex_all_pole_filter(5),"Semi-Gaussian C5 Filter"),
+        #(semi_gaussian_complex_all_pole_filter(6),"Semi-Gaussian C6 Filter"),
+        #(semi_gaussian_complex_all_pole_filter(7),"Semi-Gaussian C7 Filter"),
+        #(semi_gaussian_complex_all_pole_filter(8),"Semi-Gaussian C8 Filter"),
+        #(semi_gaussian_complex_all_pole_filter(9),"Semi-Gaussian C9 Filter"),
+        #(semi_gaussian_complex_all_pole_filter(10),"Semi-Gaussian C10 Filter"),
+        #(semi_gaussian_complex_all_pole_filter(10),"Semi-Gaussian C10 Filter"),
+        (signal.TransferFunction(*signal.bessel(2,1,btype="lowpass",analog=True,output="ba")),"Bessel 2O Filter"),
+        (signal.TransferFunction(*signal.bessel(3,1,btype="lowpass",analog=True,output="ba")),"Bessel 3O Filter"),
+        (signal.TransferFunction(*signal.bessel(4,1,btype="lowpass",analog=True,output="ba")),"Bessel 4O Filter"),
+        (signal.TransferFunction(*signal.bessel(5,1,btype="lowpass",analog=True,output="ba")),"Bessel 5O Filter"),
     ]
-    plot_filters_behavior([x[0] for x in filters_to_plot],[x[1] for x in filters_to_plot],"Filter Design","Filter_Design.pdf",t_max=10)
+    plot_filters_behavior([x[0] for x in filters_to_plot],[x[1] for x in filters_to_plot],"Filter Design","Filter_Design.pdf",t_max=15)

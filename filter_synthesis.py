@@ -44,10 +44,38 @@ def polynomial_conj(p):
     returns an instance of np.polynomial.Polynomial
     """
     assert(isinstance(p,Polynomial))
-    roots = p.roots()
     if p.degree() == 0:
         return p
-    result = Polynomial.fromroots(-roots)
+    coef = np.array(p.coef,dtype="complex128")
+    power = np.arange(len(coef))
+    coef[1::2] *= -1
+    result = Polynomial(coef)
+    return result
+
+def polynomial_w_to_s(p):
+    """
+    Converts a polynomial in angular frequency to one in s
+    by sub'ing s = jw -> w = -js
+    """
+
+    coef = np.array(p.coef,dtype="complex128")
+    len_coef = len(coef)
+    power = np.arange(len_coef)
+    coef *= (-1j)**power
+    result = Polynomial(coef)
+    return result
+
+def polynomial_s_to_w(p):
+    """
+    Converts a polynomial in s to one in angular frequency
+    by sub'ing s = jw
+    """
+
+    coef = np.array(p.coef,dtype="complex128")
+    len_coef = len(coef)
+    power = np.arange(len_coef)
+    coef *= (1j)**power
+    result = Polynomial(coef)
     return result
 
 def polynomial_complex_sqrt(p):
@@ -170,12 +198,13 @@ def cauerI_synthesis_equal_inout_impedance(n,d,R=1.,reverse_polys=False):
     assert(len(n) == 1)
     assert(n.coef[0] == 1.)
 
-    # power transfer function
+    # power transfer function in s
     Gamma_n = n*polynomial_conj(n)
     Gamma_d = d*polynomial_conj(d)
 
-    S_squared_n = -Gamma_d - Gamma_n
-    S_squared_d = -Gamma_d
+    # Gamma = 1 - S^2 -> S^2 = 1 - Gamma
+    S_squared_n = Gamma_d - Gamma_n
+    S_squared_d = Gamma_d
 
     # Now need to find S, where S times conj(S) = S_squared
     # Make sure to use +/- S
@@ -190,11 +219,11 @@ def cauerI_synthesis_equal_inout_impedance(n,d,R=1.,reverse_polys=False):
     driving_point_Z_n_minus = S_d - S_n
     driving_point_Z_d_minus = S_d + S_n
 
-    cfd_plus = polynomial_continued_fraction_decomp(driving_point_Z_n_plus,driving_point_Z_d_plus)
-    cfd_minus = polynomial_continued_fraction_decomp(driving_point_Z_n_minus,driving_point_Z_d_minus)
+    cfd_Z_plus = polynomial_continued_fraction_decomp(driving_point_Z_n_plus,driving_point_Z_d_plus)
+    cfd_Z_minus = polynomial_continued_fraction_decomp(driving_point_Z_n_minus,driving_point_Z_d_minus)
 
-    s_coefs_plus, const_coef_plus = only_linear_term_of_cfd(cfd_plus)
-    s_coefs_minus, const_coef_minus = only_linear_term_of_cfd(cfd_minus)
+    s_coefs_plus, const_coef_plus = only_linear_term_of_cfd(cfd_Z_plus)
+    s_coefs_minus, const_coef_minus = only_linear_term_of_cfd(cfd_Z_minus)
 
     if np.any(s_coefs_plus < 0.):
         raise Exception(f"Continued Fraction + has negative terms (corresponding to negative impedances): {s_coefs_plus}. Can't synth.")
@@ -325,18 +354,12 @@ if __name__ == "__main__":
     butter_filters = []
     for i in range(min_order,max_order+1):
         n, d = signal.butter(i,1,btype="lowpass",analog=True,output="ba")
-        try:
-            ladder_filter = cauerI_synthesis_equal_inout_impedance(n,d,reverse_polys=True)
-        except Exception as e:
-            print(f"Error while syth Butter {i}O: {e}")
-            butter_filters.append(None)
-        else:
-            butter_filters.append(ladder_filter)
+        ladder_filter = cauerI_synthesis_equal_inout_impedance(n,d,reverse_polys=True)
+        butter_filters.append(ladder_filter)
     butter_titles = ["Butterworth {}O".format(i) for i in range(min_order,max_order+1)]
     for i in range(max_order-min_order+1):
         print(f"{butter_titles[i]}: {butter_filters[i]}")
-    LadderNetworkFilter.make_plots_many_filters(butter_filters,butter_titles,"Synth_Butterworth.pdf","Cauer I LC Butterworth Filters",1e-3,1e3,1e-3,0,5)
-    sys.exit()
+    LadderNetworkFilter.make_plots_many_filters(butter_filters,butter_titles,"Synth_Butterworth.pdf","Cauer I LC Butterworth Filters",1e-3,1e3,1e-3,0,15)
 
     bessel_filters = []
     for i in range(min_order,max_order+1):
@@ -346,7 +369,7 @@ if __name__ == "__main__":
     bessel_titles = ["Bessel {}O".format(i) for i in range(min_order,max_order+1)]
     for i in range(max_order-min_order+1):
         print(f"{bessel_titles[i]}: {bessel_filters[i]}")
-    LadderNetworkFilter.make_plots_many_filters(bessel_filters,bessel_titles,"Synth_Bessel.pdf","Cauer I LC Bessel Filters",1e-3,1e3,1e-3,0,5)
+    LadderNetworkFilter.make_plots_many_filters(bessel_filters,bessel_titles,"Synth_Bessel.pdf","Cauer I LC Bessel Filters",1e-3,1e3,1e-3,0,15)
     
     semi_gaus_filters = []
     semi_gaus_titles = ["Semi-Gaus {}O".format(i) for i in range(min_order,max_order+1)]
@@ -357,6 +380,6 @@ if __name__ == "__main__":
         semi_gaus_filters.append(ladder_filter)
     for i in range(max_order-min_order+1):
         print(f"{semi_gaus_titles[i]}: {semi_gaus_filters[i]}")
-    LadderNetworkFilter.make_plots_many_filters(semi_gaus_filters,semi_gaus_titles,"Synth_Semi_Gaus.pdf","Cauer I LC Filters",1e-3,1e3,1e-3,0,7)
+    LadderNetworkFilter.make_plots_many_filters(semi_gaus_filters,semi_gaus_titles,"Synth_Semi_Gaus.pdf","Cauer I LC Filters",1e-3,1e3,1e-3,0,15)
 
     LadderNetworkFilter.make_plots_many_filters([bessel_filters[1],semi_gaus_filters[0]],[bessel_titles[1],semi_gaus_titles[0]],"Synth_Comparison.pdf","3rd Order LC Filter Comparison",1e-3,1e3,1e-3,0,7)
