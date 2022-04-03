@@ -133,6 +133,63 @@ def polynomial_complex_sqrt(p):
         raise Exception(f"+/- result times it's conjugate doesn't match input: {p} result*conj(result): {check_pos} result: {result}")
     return result
 
+def polynomial_derivative(p):
+
+    assert(isinstance(p,Polynomial))
+    coef = p.coef
+    power = np.arange(len(coef))
+    coef *= power
+    coef = coef[1:]
+    result = Polynomial(coef)
+    return result
+
+class NotFujisawa(Exception):
+    pass
+
+def check_fujisawa(Z_n,Z_d,R):
+    """
+    Fujisawa's theorem for realizability of a driving point impedance in an LC
+        ladder terminated with a resistor
+
+    Youla, Dante C. Theory and Synthesis of Linear Passive Time-Invariant
+        Networks. Cambridge University Press, 2015. 
+        DOI: https://doi.org/10.1017/CBO9781316403105
+    """
+    tol = 1e-9
+    assert(isinstance(Z_n,Polynomial))
+    assert(isinstance(Z_d,Polynomial))
+
+    Z_0 = Z_n(0)/Z_d(0)
+    if (Z_0 - R) > tol:
+        raise NotFujisawa(f"Z(0) != R, so not a LP impedance ladder. Z(0) = {Z_0}, R = {R}")
+
+    Z_inf = None
+    Z_n_deriv = Polynomial(Z_n.coef)
+    Z_d_deriv = Polynomial(Z_d.coef)
+    while min(Z_n_deriv.degree(), Z_d_deriv.degree()) > 0:
+        Z_n_deriv = polynomial_derivative(Z_n_deriv)
+        Z_d_deriv = polynomial_derivative(Z_d_deriv)
+    if Z_n_deriv.degree() == Z_d_deriv.degree() and Z_n_deriv.degree() == 0:
+        Z_inf = Z_n_deriv(0)/Z_d_deriv(0)
+    elif Z_n_deriv.degree() == 0:
+        Z_inf = float('inf')
+    elif Z_d_deriv.degree() == 0:
+        Z_inf = 0.
+    else:
+        raise Exception("Shouldn't have reached this branch")
+    if (Z_inf - R) > tol and (Z_inf > tol) and (Z_inf != float("inf")):
+        raise NotFujisawa(f"Z(infinity) != 0, infinity, or R, so not a LP impedance ladder. Z(infinity) = {Z_inf}, R = {R}")
+
+    B = Z_d
+    A = Z_n
+    B_conj = polynomial_conj(B)
+    A_conj = polynomial_conj(A)
+
+    BAconj_plus_BconjA = B*A_conj+B_conj*A
+    breakpoint()
+
+    
+
 def cauerI_synthesis_equal_inout_impedance(n,d,R=1.,reverse_polys=False):
     """
     Use Cauer I synthesis to make a LC low-pass filter from the Vout/Vin
@@ -211,6 +268,10 @@ def cauerI_synthesis_equal_inout_impedance(n,d,R=1.,reverse_polys=False):
     ## Use both + and - solution of polynomial_complex_sqrt
     driving_point_Z_n_minus = S_d - S_n
     driving_point_Z_d_minus = S_d + S_n
+
+    ## Fujisawa's Theorem for realizability of a LP ladder filter
+    check_fujisawa(driving_point_Z_n_plus,driving_point_Z_d_plus,1.)
+    check_fujisawa(driving_point_Z_n_minus,driving_point_Z_d_minus,1.)
 
     cfd_Z_plus = polynomial_continued_fraction_decomp(driving_point_Z_n_plus,driving_point_Z_d_plus)
     cfd_Z_minus = polynomial_continued_fraction_decomp(driving_point_Z_n_minus,driving_point_Z_d_minus)
