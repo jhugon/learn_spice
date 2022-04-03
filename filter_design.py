@@ -16,7 +16,7 @@ def plot_filters_behavior(systems,labels,title,savename,t_max=7,f_min=1e-3,f_max
         _, y_impulse = signal.impulse(system,T=ts)
         _, y_step = signal.step(system,T=ts)
         w, mag, phase = signal.bode(system,w=ws)
-        system_results.append((label,abs(y_impulse),abs(y_step),w,mag,phase))
+        system_results.append((label,y_impulse,y_step,w,mag,phase))
 
     fig, ((ax_f, ax_i), (ax_p, ax_s)) = plt.subplots(nrows=2,ncols=2,figsize=(11.,8.5),constrained_layout=True,sharex="col")
     ax_f.set_xscale("log")

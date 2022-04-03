@@ -127,11 +127,8 @@ def polynomial_complex_sqrt(p):
     result_conj = polynomial_conj(result)
     check_pos = result*result_conj
     check_neg = -result*result_conj
-    try:
-        error_pos = abs(p.coef-check_pos.coef)
-        error_neg = abs(p.coef-check_neg.coef)
-    except Exception:
-        breakpoint()
+    error_pos = abs(p.coef-check_pos.coef)
+    error_neg = abs(p.coef-check_neg.coef)
     if error_pos.sum() > tol and error_neg.sum() > tol:
         raise Exception(f"+/- result times it's conjugate doesn't match input: {p} result*conj(result): {check_pos} result: {result}")
     return result
@@ -193,10 +190,6 @@ def cauerI_synthesis_equal_inout_impedance(n,d,R=1.,reverse_polys=False):
     n = Polynomial(n).trim()
     d = Polynomial(d).trim()
     assert(len(n)<=len(d))
-
-    # Only works for just 1 in the numerator for now
-    assert(len(n) == 1)
-    assert(n.coef[0] == 1.)
 
     # power transfer function in s
     Gamma_n = n*polynomial_conj(n)
@@ -352,34 +345,44 @@ if __name__ == "__main__":
     max_order = 5
 
     butter_filters = []
+    butter_tfs = []
     for i in range(min_order,max_order+1):
         n, d = signal.butter(i,1,btype="lowpass",analog=True,output="ba")
+        butter_tfs.append(signal.TransferFunction(n,d))
         ladder_filter = cauerI_synthesis_equal_inout_impedance(n,d,reverse_polys=True)
         butter_filters.append(ladder_filter)
     butter_titles = ["Butterworth {}O".format(i) for i in range(min_order,max_order+1)]
     for i in range(max_order-min_order+1):
         print(f"{butter_titles[i]}: {butter_filters[i]}")
+    plot_filters_behavior(butter_tfs,butter_titles,"Ideal Butterworth Response","Ideal_Butterworth.pdf",15)
     LadderNetworkFilter.make_plots_many_filters(butter_filters,butter_titles,"Synth_Butterworth.pdf","Cauer I LC Butterworth Filters",1e-3,1e3,1e-3,0,15)
 
     bessel_filters = []
+    bessel_tfs = []
     for i in range(min_order,max_order+1):
-        n, d = signal.bessel(i,1,btype="lowpass",analog=True,output="ba")
+        n, d = signal.bessel(i,1,btype="lowpass",analog=True,output="ba")#,norm="mag")
+        bessel_tfs.append(signal.TransferFunction(n,d))
         ladder_filter = cauerI_synthesis_equal_inout_impedance(n,d,reverse_polys=True)
         bessel_filters.append(ladder_filter)
     bessel_titles = ["Bessel {}O".format(i) for i in range(min_order,max_order+1)]
     for i in range(max_order-min_order+1):
         print(f"{bessel_titles[i]}: {bessel_filters[i]}")
+    plot_filters_behavior(bessel_tfs,bessel_titles,"Ideal Bessel Response","Ideal_Bessel.pdf",15)
     LadderNetworkFilter.make_plots_many_filters(bessel_filters,bessel_titles,"Synth_Bessel.pdf","Cauer I LC Bessel Filters",1e-3,1e3,1e-3,0,15)
     
     semi_gaus_filters = []
     semi_gaus_titles = ["Semi-Gaus {}O".format(i) for i in range(min_order,max_order+1)]
+    semi_gaus_tfs = []
     for i in range(min_order,max_order+1):
         zpg = semi_gaussian_complex_all_pole_filter(i)
         tf = zpg.to_tf()
+        #print(f"{i}: {tf} {zpg}")
         ladder_filter = cauerI_synthesis_equal_inout_impedance(tf.num,tf.den,reverse_polys=True)
         semi_gaus_filters.append(ladder_filter)
+        semi_gaus_tfs.append(tf)
     for i in range(max_order-min_order+1):
         print(f"{semi_gaus_titles[i]}: {semi_gaus_filters[i]}")
+    plot_filters_behavior(semi_gaus_tfs,semi_gaus_titles,"Ideal Semi-Gaus Response","Ideal_Semi_Gaus.pdf",7)
     LadderNetworkFilter.make_plots_many_filters(semi_gaus_filters,semi_gaus_titles,"Synth_Semi_Gaus.pdf","Cauer I LC Filters",1e-3,1e3,1e-3,0,15)
 
     LadderNetworkFilter.make_plots_many_filters([bessel_filters[1],semi_gaus_filters[0]],[bessel_titles[1],semi_gaus_titles[0]],"Synth_Comparison.pdf","3rd Order LC Filter Comparison",1e-3,1e3,1e-3,0,7)
